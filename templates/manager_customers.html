@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-actions">
+        <h2>Клієнтські картки</h2>
+        <button class="btn-primary" onclick="window.location.href='/manager/customers/add'">+ Нова картка</button>
+    </div>
+    <table class="styled-table">
+        <thead><tr><th>Номер</th><th>Прізвище</th><th>Ім'я</th><th>Телефон</th><th>% знижки</th><th>Дії</th></tr></thead>
+        <tbody>
+            {% for c in customers %}
+            <tr>
+                <td>{{ c[0] }}</td><td>{{ c[1] }}</td><td>{{ c[2] }}</td><td>{{ c[4] }}</td><td>{{ c[8] }}%</td>
+                <td><a href="/manager/customers/delete/{{ c[0] }}" style="color: #e74c3c;" onclick="return confirm('Видалити?')">✕ Вид.</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

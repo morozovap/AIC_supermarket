@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-container">
+    <h2>Деталі чека №{{ details[0][0] if details else 'N/A' }}</h2>
+    <table class="styled-table">
+        <thead><tr><th>Товар</th><th>К-сть</th><th>Ціна</th></tr></thead>
+        <tbody>
+            {% for d in details %}
+            <tr><td>{{ d[7] }}</td><td>{{ d[8] }}</td><td>{{ d[9] }} грн</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/manager/checks" class="btn-primary" style="display:inline-block; width: auto;">Назад</a>
+</div>
+{% endblock %}

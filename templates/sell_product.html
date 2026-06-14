@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 600px; margin-top: 40px;">
+    <h2>Оформлення продажу</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Номер чека</label>
+            <input type="text" name="check_number" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label>Товар</label>
+            <select name="upc" id="product-search" class="form-control" required>
+                <option value="">Оберіть товар...</option>
+                {% for p in products %}
+                <option value="{{ p[0] }}">
+                    {{ p[0] }} | {{ p[2] }} | Ціна: {{ p[3] }} | Зал: {{ p[4] }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Кількість</label>
+            <input type="number" name="quantity" class="form-control" value="1" required>
+        </div>
+
+        <div class="form-group">
+            <label>Ціна за одиницю</label>
+            <input type="number" step="0.01" name="price" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label>Клієнт (картка)</label>
+            <select name="card_number" class="form-control">
+                <option value="">Без карти</option>
+                {% for c in customers %}
+                <option value="{{ c[0] }}">{{ c[1] }} {{ c[2] }} ({{ c[8] }}%)</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Загальна сума</label>
+            <input type="number" step="0.01" name="total_sum" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn-primary">Сформувати чек</button>
+    </form>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#product-search').select2({
+            width: '100%',
+            placeholder: "Почніть вводити назву або код товару...",
+            allowClear: true
+        });
+    });
+</script>
+{% endblock %}

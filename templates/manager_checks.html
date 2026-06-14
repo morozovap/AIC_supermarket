@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Історія чеків - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-actions">
+        <h2>Історія продажів (Чеки)</h2>
+        <div>
+            <a href="/cashier/sell" class="btn-primary" style="background-color: var(--primary-pink); text-decoration: none; padding: 10px 20px; border-radius: 20px; margin-right: 10px;">+ Продати</a>
+            <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green);" onclick="window.print()">Друк звіту</button>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>Номер чека</th>
+                    <th>ID Касира</th>
+                    <th>Карта клієнта</th>
+                    <th>Дата та час</th>
+                    <th>Загальна сума</th>
+                    <th>ПДВ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in checks %}
+                <tr>
+                    <td>
+                        <strong>
+                            <a href="/manager/check/{{ c[0] }}" style="color: var(--primary-pink); text-decoration: underline;">{{ c[0] }}</a>
+                        </strong>
+                    </td>
+                    <td>{{ c[1] }}</td>
+                    <td>{{ c[2] if c[2] else 'Без карти' }}</td>
+                    <td>{{ c[3] }}</td>
+                    <td>{{ c[4] }} грн</td>
+                    <td>{{ c[5] }} грн</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px;">Немає даних про чеки.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

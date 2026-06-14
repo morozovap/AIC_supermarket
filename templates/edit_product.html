@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Редагувати товар - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="login-container" style="max-width: 500px; margin-top: 5vh;">
+    <h2>Редагування товару</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>ID Товару (незмінний)</label>
+            <input type="text" class="form-control" value="{{ product[0] }}" disabled>
+        </div>
+        <div class="form-group">
+            <label>Категорія</label>
+            <select name="category_number" class="form-control">
+                {% for cat in categories %}
+                    <option value="{{ cat[0] }}" {% if cat[0] == product[1] %}selected{% endif %}>{{ cat[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Назва товару</label>
+            <input type="text" name="product_name" class="form-control" value="{{ product[2] }}" required>
+        </div>
+        <div class="form-group">
+            <label>Виробник</label>
+            <input type="text" name="producer" class="form-control" value="{{ product[3] }}" required>
+        </div>
+        <div class="form-group">
+            <label>Характеристики</label>
+            <input type="text" name="characteristics" class="form-control" value="{{ product[4] }}" required>
+        </div>
+        <button type="submit" class="btn-primary">Зберегти зміни</button>
+    </form>
+</div>
+{% endblock %}

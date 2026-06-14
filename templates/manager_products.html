@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Товари - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-actions">
+        <h2>Довідник товарів</h2>
+        <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/manager/products/add'">+ Додати товар</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Категорія</th>
+                    <th>Назва</th>
+                    <th>Виробник</th>
+                    <th>Характеристики</th>
+                    <th>Дії</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr>
+                    <td>{{ p[0] }}</td>
+                    <td>{{ p[1] }}</td>
+                    <td><strong>{{ p[2] }}</strong></td>
+                    <td>{{ p[3] }}</td>
+                    <td>{{ p[4] }}</td>
+                    <td>
+                        <a href="/manager/products/edit/{{ p[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 15px; font-weight: 500;">✎ Ред.</a>
+                        <a href="/manager/products/delete/{{ p[0] }}" style="color: #e74c3c; text-decoration: none; font-weight: 500;" onclick="return confirm('Ви впевнені, що хочете видалити цей товар?')">✕ Вид.</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px;">Немає даних про товари.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

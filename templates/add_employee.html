@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Додати працівника - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="login-container" style="max-width: 800px; margin-top: 5vh; padding: 40px;">
+    <h2 style="margin-bottom: 20px;">Новий працівник</h2>
+    
+    <form method="POST" action="/manager/employees/add">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px;">
+            
+            <div class="form-group">
+                <label for="id_employee">ID Працівника (Код)</label>
+                <input type="text" id="id_employee" name="id_employee" class="form-control" placeholder="Наприклад: E010" required>
+            </div>
+
+            <div class="form-group">
+                <label for="role">Посада (Випадаючий список)</label>
+                <select id="role" name="role" class="form-control" required style="cursor: pointer;">
+                    <option value="" disabled selected>-- Оберіть посаду --</option>
+                    <option value="Cashier">Касир (Cashier)</option>
+                    <option value="Manager">Менеджер (Manager)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="surname">Прізвище</label>
+                <input type="text" id="surname" name="surname" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="name">Ім'я</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="patronymic">По батькові</label>
+                <input type="text" id="patronymic" name="patronymic" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Телефон</label>
+                <input type="text" id="phone" name="phone" class="form-control" placeholder="+380..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="birth_date">Дата народження</label>
+                <input type="date" id="birth_date" name="birth_date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="start_date">Дата початку роботи</label>
+                <input type="date" id="start_date" name="start_date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="salary">Зарплата (грн)</label>
+                <input type="number" step="0.01" id="salary" name="salary" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="city">Місто</label>
+                <input type="text" id="city" name="city" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="street">Вулиця</label>
+                <input type="text" id="street" name="street" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="zip_code">Індекс</label>
+                <input type="text" id="zip_code" name="zip_code" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="login">Логін (Номер телефону)</label>
+                <input type="text" id="login" name="login" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль (Буде зашифровано)</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">Зберегти працівника</button>
+            <button type="button" class="btn-primary" style="background-color: transparent; color: var(--text-main); border: 2px solid #eee; margin-top: 15px;" onclick="window.location.href='/manager/employees'">Скасувати</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

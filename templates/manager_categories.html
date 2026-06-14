@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Категорії - ZLAGODA{% endblock %}
+{% block content %}
+<div class="dashboard-container">
+    <h2>Керування категоріями</h2>
+    <form action="/manager/categories/add" method="POST" style="margin-bottom: 30px; display: flex; gap: 10px;">
+        <input type="number" name="category_number" class="form-control" placeholder="ID (число)" required>
+        <input type="text" name="category_name" class="form-control" placeholder="Назва категорії" required>
+        <button type="submit" class="btn-primary" style="margin-top: 0;">+ Додати</button>
+    </form>
+
+    <table class="styled-table">
+        <thead><tr><th>ID</th><th>Назва</th><th>Дії</th></tr></thead>
+        <tbody>
+            {% for cat in categories %}
+            <tr>
+                <td>{{ cat[0] }}</td>
+                <td>{{ cat[1] }}</td>
+                <td><a href="/manager/categories/delete/{{ cat[0] }}" style="color: #e74c3c;">✕ Видалити</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
