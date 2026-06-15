@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-actions">
+        <h2>Пошук товарів та перевірка ціни / залишків</h2>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <form method="GET" action="/cashier/products" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 2; min-width: 250px;">
+                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Пошук за назвою або штрих-кодом (UPC)</label>
+                <input type="text" name="search_text" value="{{ search_text }}" class="form-control" placeholder="Введіть назву або скануйте штрих-код..." style="padding: 10px;">
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Категорія</label>
+                <select name="category_filter" class="form-control" style="padding: 10px;">
+                    <option value="all" {% if category_filter == 'all' %}selected{% endif %}>Всі категорії</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat[0] }}" {% if category_filter|string == cat[0]|string %}selected{% endif %}>{{ cat[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Тип товару</label>
+                <select name="promo_filter" class="form-control" style="padding: 10px;">
+                    <option value="all" {% if promo_filter == 'all' %}selected{% endif %}>Всі товари</option>
+                    <option value="promo" {% if promo_filter == 'promo' %}selected{% endif %}>Тільки Акційні</option>
+                    <option value="non_promo" {% if promo_filter == 'non_promo' %}selected{% endif %}>Звичайні</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary" style="width: auto; padding: 10px 20px; margin-top: 0;">Знайти товар</button>
+        </form>
+    </div>
+
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Штрих-код (UPC)</th>
+                <th>Назва товару</th>
+                <th>Категорія</th>
+                <th>Ціна за одиницю</th>
+                <th>Залишок на складі</th>
+                <th>Статус</th>
+                <th>Характеристики</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td><code>{{ p[0] }}</code></td>
+                <td><strong>{{ p[4] }}</strong></td>
+                <td>{{ p[6] }}</td>
+                <td><strong style="color: #27ae60;">{{ p[1] }} грн</strong></td>
+                <td>{{ p[2] }} шт/кг</td>
+                <td>
+                    {% if p[3] %}
+                        <span style="background: #ffadba; color: #d63031; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">🔥 АКЦІЯ</span>
+                    {% else %}
+                        <span style="background: #eef2f7; color: #5a6a85; padding: 3px 8px; border-radius: 10px; font-size: 11px;">Звичайний</span>
+                    {% endif %}
+                </td>
+                <td><small style="color: gray;">{{ p[5] if p[5] else 'Немає опису' }}</small></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align: center; padding: 20px;">Товарів за вказаними критеріями пошуку не знайдено.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

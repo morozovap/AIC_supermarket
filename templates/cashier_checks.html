@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-actions">
+        <h2>Історія моїх продажів (Чеки)</h2>
+        <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/cashier/sell'">+ Новий чек</button>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <form method="GET" action="/cashier/my-checks" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+            <div>
+                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Варіант фільтра</label>
+                <select name="filter_type" class="form-control" style="padding: 10px;" onchange="document.getElementById('date-inputs').style.display = this.value == 'period' ? 'flex' : 'none'">
+                    <option value="today" {% if filter_type == 'today' %}selected{% endif %}>Тільки за сьогодні</option>
+                    <option value="period" {% if filter_type == 'period' %}selected{% endif %}>За період дат</option>
+                </select>
+            </div>
+            
+            <div id="date-inputs" style="display: {% if filter_type == 'period' %}flex{% else %}none{% endif %}; gap: 15px;">
+                <div>
+                    <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">З якої дати</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="padding: 10px;">
+                </div>
+                <div>
+                    <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">По яку дату</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="padding: 10px;">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary" style="width: auto; padding: 10px 20px; margin-top: 0;">Показати чеки</button>
+        </form>
+    </div>
+
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Номер чека</th>
+                <th>Карта клієнта</th>
+                <th>Дата та час</th>
+                <th>Загальна сума</th>
+                <th>ПДВ</th>
+                <th>Вміст</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in checks %}
+            <tr>
+                <td><code>{{ c[0] }}</code></td>
+                <td>{{ c[1] if c[1] else 'Без карти' }}</td>
+                <td>{{ c[2] }}</td>
+                <td><strong>{{ c[3] }} грн</strong></td>
+                <td>{{ c[4] }} грн</td>
+                <td>
+                    <a href="/cashier/my-checks/details/{{ c[0] }}" style="color: var(--primary-green); text-decoration: none; font-weight: 600;">🔍 Деталі чека</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align: center; padding: 20px;">За вказаний період ви не оформлювали чеків.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

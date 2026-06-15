@@ -82,6 +82,20 @@ def login():
             
     return render_template('login.html', error=error)
 
+# ── КАСИР
+@app.route('/cashier/profile')
+@login_required
+def cashier_profile():
+    user_id = session.get('user_id') or session.get('id_employee')
+    
+    try:
+        emp = employee.get_employee_by_id(user_id)
+    except Exception as e:
+        emp = None
+        print(f"Помилка при завантаженні профілю касира: {e}")
+        
+    return render_template('cashier_profile.html', emp=emp)
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -148,12 +162,24 @@ def edit_employee(id_employee):
 @app.route('/manager/products')
 @manager_required
 def manager_products():
+    category_filter = request.args.get('category_filter', 'all')
     try:
-        products_list = product.get_all_products() or []
+        # Використовуємо ТВОЮ готову функцію з product.py
+        if category_filter != 'all':
+            products_list = product.get_products_by_category(int(category_filter)) or []
+        else:
+            products_list = product.get_all_products() or []
+            
+        categories = category.get_all_categories() or []
     except Exception as e:
         products_list = []
-        print(f"Помилка БД: {e}")
-    return render_template('manager_products.html', products=products_list)
+        categories = []
+        print(f"Помилка при отриманні товарів за категорією: {e}")
+        
+    return render_template('manager_products.html', 
+                           products=products_list, 
+                           categories=categories, 
+                           category_filter=category_filter)
 
 @app.route('/manager/products/add', methods=['GET', 'POST'])
 @manager_required
@@ -382,8 +408,36 @@ def edit_category(cat_num):
 @app.route('/manager/customers')
 @login_required
 def manager_customers():
-    customers = customer_card.get_all_customers() or []
-    return render_template('manager_customers.html', customers=customers)
+    search_surname = request.args.get('search_surname', '').strip()
+    percent_filter = request.args.get('percent_filter', 'all')
+
+    try:
+        # Використовуємо ТВОЇ готові функції з customer_card.py
+        if search_surname:
+            customers = customer_card.search_customers_by_surname(search_surname) or []
+            # Якщо одночасно вибрано і відсоток, фільтруємо результат прямо в Python
+            if percent_filter != 'all':
+                customers = [c for c in customers if str(c[8]) == str(percent_filter)]
+        elif percent_filter != 'all':
+            customers = customer_card.get_customers_by_percent(int(percent_filter)) or []
+        else:
+            customers = customer_card.get_all_customers() or []
+
+        # Збираємо унікальні відсотки для випадаючого списку (фільтра)
+        from db import execute_query
+        percents_raw = execute_query("SELECT DISTINCT percent FROM customer_card ORDER BY percent;", fetch=True) or []
+        percents = [p[0] for p in percents_raw]
+        
+    except Exception as e:
+        customers = []
+        percents = []
+        print(f"Помилка при фільтрації клієнтів: {e}")
+
+    return render_template('manager_customers.html', 
+                           customers=customers, 
+                           percents=percents, 
+                           search_surname=search_surname, 
+                           percent_filter=percent_filter)
 
 @app.route('/manager/customers/add', methods=['GET', 'POST'])
 @login_required
@@ -445,6 +499,85 @@ def delete_check(check_number):
     check.delete_receipt(check_number)
     return redirect(url_for('manager_checks'))
 
+@app.route('/cashier/my-checks')
+@login_required
+def cashier_my_checks():
+    user_id = session.get('id_employee')
+    
+    # Визначаємо поточну дату комп'ютера
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+    start_date = request.args.get('start_date', today_str)
+    end_date = request.args.get('end_date', today_str)
+    filter_type = request.args.get('filter_type', 'today')
+    
+    if filter_type == 'today':
+        start_date = today_str
+        end_date = today_str
+        
+    from db import execute_query
+    
+    # ФІКС: Змінено "receipts" на точну назву таблиці з бази даних "receipt"
+    query = """
+        SELECT check_number, card_number, print_date, sum_total, vat
+        FROM receipt
+        WHERE id_employee = %s AND print_date::date BETWEEN %s::date AND %s::date
+        ORDER BY print_date DESC;
+    """
+    try:
+        checks = execute_query(query, (user_id, start_date, end_date), fetch=True) or []
+    except Exception as e:
+        checks = []
+        print(f"Помилка завантаження чеків касира: {e}")
+        
+    return render_template('cashier_checks.html', checks=checks, start_date=start_date, end_date=end_date, filter_type=filter_type)
+
+@app.route('/cashier/my-checks/details/<check_number>')
+@login_required
+def cashier_check_details(check_number):
+    from db import execute_query
+    query = """
+        SELECT s.product_number, s.selling_price, p.product_name
+        FROM sale s
+        JOIN store_product sp ON s.upc = sp.upc
+        JOIN product p ON sp.id_product = p.id_product
+        WHERE s.check_number = %s;
+    """
+    details = execute_query(query, (check_number,), fetch=True) or []
+    return render_template('cashier_check_details.html', details=details, check_number=check_number)
+
+@app.route('/api/search-customers')
+@login_required
+def api_search_customers():
+    surname = request.args.get('surname', '').strip()
+    if not surname:
+        return []
+    import customer_card
+    try:
+        res = customer_card.search_customers_by_surname(surname) or []
+        return [{'card_number': c[0], 'cust_surname': c[1], 'cust_name': c[2], 'percent': c[8]} for c in res]
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/get-product-details')
+@login_required
+def api_get_product_details():
+    upc = request.args.get('upc', '').strip()
+    if not upc:
+        return None
+    import store_product
+    try:
+        res = store_product.get_product_details_by_upc(upc)
+        if res:
+            return {
+                'selling_price': float(res[0][0]),
+                'products_number': res[0][1],
+                'product_name': res[0][2],
+                'characteristics': res[0][3]
+            }
+        return None
+    except Exception as e:
+        return {'error': str(e)}, 500
+
 # ── ПРОДАЖ (касир) ──────────────────────────────────────────────
 @app.route('/cashier/sell', methods=['GET', 'POST'])
 @login_required
@@ -453,7 +586,7 @@ def cashier_sell():
         error = None
         check_number = request.form.get('check_number', '').strip()
         card_number  = request.form.get('card_number') or None
-        id_employee  = session['id_employee']  # береться з сесії — реальний ID
+        id_employee  = session['id_employee']
 
         upcs       = request.form.getlist('upc[]')
         quantities = request.form.getlist('quantity[]')
@@ -483,13 +616,25 @@ def cashier_sell():
                 total_sum  = float(request.form.get('total_sum', 0))
                 print_date = datetime.datetime.now()
 
+                # 1. Створюємо чек у базі даних
                 check.add_receipt(check_number, id_employee, card_number, print_date, total_sum)
 
+                # 2. Проходимо по товарах, додаємо продажі та жорстко списуємо залишки
+                from db import execute_query
                 for upc, qty_str, price_str in zip(upcs, quantities, prices):
                     qty   = int(qty_str)
                     price = float(price_str)
+                    
+                    # Додаємо запис у таблицю продажів
                     check.add_sale(upc, check_number, qty, price)
-                    store_product.decrease_quantity(upc, qty)
+                    
+                    # ФІКС: Пряме залізобетонне списання кількості з гарантованим коммітом
+                    decrease_stock_query = """
+                        UPDATE store_product 
+                        SET products_number = products_number - %s 
+                        WHERE upc = %s;
+                    """
+                    execute_query(decrease_stock_query, (qty, upc), fetch=False)
 
                 return redirect(url_for('view_check_details', check_number=check_number))
 
@@ -510,6 +655,48 @@ def cashier_sell():
     return render_template('sell_product.html',
                            products=products, customers=customers,
                            error=None, auto_check_number=auto_number)
+    
+@app.route('/cashier/products')
+@login_required
+def cashier_products():
+    search_text = request.args.get('search_text', '').strip()
+    category_filter = request.args.get('category_filter', 'all')
+    promo_filter = request.args.get('promo_filter', 'all')
+    
+    from db import execute_query
+    query = """
+        SELECT sp.upc, sp.selling_price, sp.products_number, sp.promotional_product, 
+               p.product_name, p.characteristics, c.category_name
+        FROM store_product sp
+        JOIN product p ON sp.id_product = p.id_product
+        JOIN category c ON p.category_number = c.category_number
+        WHERE 1=1
+    """
+    params = []
+    if search_text:
+        query += " AND (p.product_name ILIKE %s OR sp.upc ILIKE %s)"
+        params.append(f"%{search_text}%")
+        params.append(f"%{search_text}%")
+    if category_filter != 'all':
+        query += " AND p.category_number = %s"
+        params.append(int(category_filter))
+    if promo_filter == 'promo':
+        query += " AND sp.promotional_product = TRUE"
+    elif promo_filter == 'non_promo':
+        query += " AND sp.promotional_product = FALSE"
+        
+    query += " ORDER BY p.product_name ASC;"
+    
+    try:
+        products = execute_query(query, tuple(params) if params else None, fetch=True) or []
+        categories = execute_query("SELECT * FROM category ORDER BY category_name;", fetch=True) or []
+    except Exception as e:
+        products = []
+        categories = []
+        print(f"Помилка пошуку товарів для касира: {e}")
+        
+    return render_template('cashier_products.html', products=products, categories=categories,
+                           search_text=search_text, category_filter=category_filter, promo_filter=promo_filter)
     
 # ── АНАЛІТИЧНІ ЗВІТИ ДЛЯ МЕНЕДЖЕРА ──────────────────────────────
 @app.route('/manager/reports', methods=['GET', 'POST'])

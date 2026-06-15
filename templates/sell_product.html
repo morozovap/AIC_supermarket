@@ -96,9 +96,21 @@
     <div class="alert-error">⚠️ {{ error }}</div>
     {% endif %}
 
+    <div style="background: #fdf6f6; padding: 20px; border-radius: 16px; border: 1px dashed var(--primary-pink); margin-bottom: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <label style="display: block; font-size: 13px; font-weight: 700; color: var(--primary-pink); margin-bottom: 7px;">🛒 Швидке введення / Сканування UPC (п. 14)</label>
+            <input type="text" id="upc-scan-input" class="form-control" placeholder="Введіть 12 цифр або скануйте код..." oninput="handleUPCScan(this.value)" autocomplete="off">
+            <small id="scan-feedback" style="display: block; margin-top: 5px; color: #27ae60; font-weight: 600; min-height: 15px;"></small>
+        </div>
+        <div>
+            <label style="display: block; font-size: 13px; font-weight: 700; color: var(--primary-green); margin-bottom: 7px;">🔍 Пошук клієнта за прізвищем (п. 6)</label>
+            <input type="text" id="cust-search-input" class="form-control" placeholder="Введіть перші літери прізвища..." oninput="handleCustomerSearch(this.value)" autocomplete="off">
+            <small id="cust-feedback" style="display: block; margin-top: 5px; color: #27ae60; font-weight: 600; min-height: 15px;"></small>
+        </div>
+    </div>
+
     <form method="POST" id="sell-form">
 
-      <!-- Мета-дані -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 24px;">
         <div class="form-group">
           <label>Номер чека</label>
@@ -106,7 +118,7 @@
                  value="{{ auto_check_number }}" required>
         </div>
         <div class="form-group">
-          <label>Карта клієнта (необов'язково)</label>
+          <label>Карта клієнта (обрана)</label>
           <select name="card_number" class="form-control" id="card-select" onchange="recalcTotal()">
             <option value="">Без карти</option>
             {% for c in customers %}
@@ -118,7 +130,6 @@
         </div>
       </div>
 
-      <!-- Список товарів -->
       <h3>Товари у чеку</h3>
 
       <table class="items-table">
@@ -137,7 +148,6 @@
               <select name="upc[]" class="form-control product-select" required onchange="fillPrice(this)">
                 <option value="">Оберіть товар...</option>
                 {% for p in products %}
-                {# p: [0]=upc [1]=upc_prom [2]=id_product [3]=selling_price [4]=products_number [5]=promo [6]=product_name #}
                 <option value="{{ p[0] }}"
                         data-price="{{ p[3] }}"
                         data-stock="{{ p[4] }}"
@@ -166,7 +176,6 @@
 
       <button type="button" class="btn-add-row" onclick="addRow()">+ Додати ще товар</button>
 
-      <!-- Підсумок -->
       <div class="summary-block">
         <div class="summary-row">
           <span>Сума без знижки:</span>
@@ -195,7 +204,6 @@
   </div>
 </div>
 
-<!-- Шаблон рядка (прихований) -->
 <template id="row-tpl">
   <tr class="item-row">
     <td class="col-product">
@@ -228,6 +236,64 @@
 </template>
 
 <script>
+function handleUPCScan(upc) {
+    const feedback = document.getElementById('scan-feedback');
+    if (upc.trim().length === 12) {
+        fetch(`/api/get-product-details?upc=${upc.trim()}`)
+            .then(res => res.json())
+            .then(product => {
+                if (product && product.product_name) {
+                    let rows = document.querySelectorAll('.item-row');
+                    let targetRow = rows[rows.length - 1];
+                    let select = targetRow.querySelector('.product-select');
+                    
+                    if (select.value !== "") {
+                        targetRow = addRow();
+                        select = targetRow.querySelector('.product-select');
+                    }
+                    
+                    select.value = upc.trim();
+                    fillPrice(select);
+                    
+                    feedback.style.color = "#27ae60";
+                    feedback.innerText = `✅ Додано: ${product.product_name} (${product.selling_price} грн)`;
+                    document.getElementById('upc-scan-input').value = "";
+                } else {
+                    feedback.style.color = "#e74c3c";
+                    feedback.innerText = "❌ Товар із таким UPC не знайдено на полицях!";
+                }
+            })
+            .catch(() => {
+                feedback.style.color = "#e74c3c";
+                feedback.innerText = "❌ Помилка з'єднання з базою API.";
+            });
+    } else {
+        feedback.innerText = "";
+    }
+}
+
+function handleCustomerSearch(surname) {
+    const feedback = document.getElementById('cust-feedback');
+    if (surname.trim().length >= 2) {
+        fetch(`/api/search-customers?surname=${encodeURIComponent(surname.trim())}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const cardSelect = document.getElementById('card-select');
+                    cardSelect.value = data[0].card_number;
+                    recalcTotal();
+                    feedback.style.color = "#27ae60";
+                    feedback.innerText = `🎯 Знайдено: ${data[0].cust_surname} (${data[0].percent}% знижки)`;
+                } else {
+                    feedback.style.color = "#e67e22";
+                    feedback.innerText = "Клієнта не знайдено.";
+                }
+            });
+    } else {
+        feedback.innerText = "";
+    }
+}
+
 function fillPrice(sel) {
     const row   = sel.closest('.item-row');
     const opt   = sel.selectedOptions[0];
@@ -270,7 +336,9 @@ function recalcTotal() {
 
 function addRow() {
     const clone = document.getElementById('row-tpl').content.cloneNode(true);
-    document.getElementById('items-body').appendChild(clone);
+    const itemsBody = document.getElementById('items-body');
+    itemsBody.appendChild(clone);
+    return itemsBody.lastElementChild;
 }
 
 function removeRow(btn) {
@@ -286,7 +354,7 @@ function prepareSubmit() {
     const seen = new Set();
     for (const upc of upcs) {
         if (!upc) { alert('Оберіть товар у кожному рядку.'); return false; }
-        if (seen.has(upc)) { alert('Один і той самий товар додано двічі. Збільшіть кількість в одному рядку.'); return false; }
+        if (seen.has(upc)) { alert('Один і той самий товар додано двічі.'); return false; }
         seen.add(upc);
     }
     const rows = document.querySelectorAll('.item-row');

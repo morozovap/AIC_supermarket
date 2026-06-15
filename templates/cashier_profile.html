@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Мій профіль - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 800px; margin-top: 5vh;">
+    <div class="header-actions" style="border-bottom: 2px solid var(--bg-color); padding-bottom: 15px; margin-bottom: 30px;">
+        <h2>Особистий кабінет працівника</h2>
+        <span style="background: var(--primary-green); color: white; padding: 8px 16px; border-radius: 50px; font-size: 14px; font-weight: 600;">
+    Посада: 
+    {% if 'manager' in emp[4]|string|lower or 'менеджер' in emp[4]|string|lower %}
+        Менеджер
+    {% else %}
+        Касир
+    {% endif %}
+</span>
+    </div>
+
+    {% if emp %}
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);">
+            <h3 style="margin-top: 0; color: var(--primary-pink); border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 18px;">📋 Основна інформація</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Табельний номер (ID)</label>
+                <strong style="font-family: monospace; font-size: 15px;">{{ emp[0] }}</strong>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Прізвище, Ім'я, По батькові</label>
+                <strong style="font-size: 16px;">{{ emp[1] }} {{ emp[2] }} {{ emp[3] if emp[3] else '' }}</strong>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Дата народження</label>
+                <strong>{{ emp[6] }}</strong>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Логін в системі</label>
+                <strong style="color: #555;">{{ emp[12] }}</strong>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);">
+            <h3 style="margin-top: 0; color: var(--primary-green); border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 18px;">💼 Умови праці та контакти</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Поточна заробітна плата (ставка)</label>
+                <strong style="font-size: 18px; color: #27ae60;">{{ emp[5] }} грн</strong>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Дата початку роботи в компанії</label>
+                <strong>{{ emp[7] }}</strong>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Номер телефону</label>
+                <strong>📞 {{ emp[8] }}</strong>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <label style="font-size: 12px; color: gray; display: block; margin-bottom: 3px;">Адреса проживання</label>
+                <strong style="font-size: 14px; color: #5a5a5a;">
+                    {{ emp[9] }}, вул. {{ emp[10] }}{% if emp[11] %}, індекс: {{ emp[11] }}{% endif %}
+                </strong>
+            </div>
+        </div>
+
+    </div>
+    
+    <div style="text-align: center; margin-top: 40px;">
+        <p style="font-size: 12px; color: gray; font-style: italic;">Для зміни персональних або контактних даних, будь ласка, зверніться до вашого менеджера.</p>
+    </div>
+    
+    {% else %}
+    <div style="text-align: center; padding: 50px;">
+        <p style="color: #e74c3c; font-weight: 500;">Не вдалося завантажити дані вашого профілю. Перевірте сесію авторизації.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

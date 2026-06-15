@@ -1,49 +1,56 @@
 {% extends 'base.html' %}
 
-{% block title %}Товари - ZLAGODA{% endblock %}
+{% block title %}Довідник товарів - ZLAGODA{% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
     <div class="header-actions">
-        <h2>Довідник товарів</h2>
-        <div style="display: flex; gap: 15px;">
-            <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/manager/products/add'">+ Додати товар</button>
-            <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green, #27ae60); border-color: var(--primary-green, #27ae60);" onclick="window.location.href='/manager/store_products/add'">+ Прийняти партію</button>
-        </div>
+        <h2>Довідник базових товарів</h2>
+        <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/manager/products/add'">+ Додати товар</button>
     </div>
 
-    <div class="table-wrapper">
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Категорія</th>
-                    <th>Назва</th>
-                    <th>Виробник</th>
-                    <th>Характеристики</th>
-                    <th>Дії</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in products %}
-                <tr>
-                    <td>{{ p[0] }}</td>
-                    <td>{{ p[1] }}</td>
-                    <td><strong>{{ p[2] }}</strong></td>
-                    <td>{{ p[3] }}</td>
-                    <td>{{ p[4] }}</td>
-                    <td>
-                        <a href="/manager/products/edit/{{ p[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 15px; font-weight: 500;">✎ Ред.</a>
-                        <a href="/manager/products/delete/{{ p[0] }}" style="color: #e74c3c; text-decoration: none; font-weight: 500;" onclick="return confirm('Ви впевнені, що хочете видалити цей товар?')">✕ Вид.</a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px;">Немає даних про товари.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <form method="GET" action="/manager/products" style="display: flex; gap: 15px; align-items: flex-end;">
+            <div style="flex: 1;">
+                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Фільтр за категорією (п. 13)</label>
+                <select name="category_filter" class="form-control" style="padding: 10px;">
+                    <option value="all" {% if category_filter == 'all' %}selected{% endif %}>Всі категорії</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat[0] }}" {% if category_filter|string == cat[0]|string %}selected{% endif %}>{{ cat[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-primary" style="width: auto; padding: 10px 20px; margin-top: 0;">Фільтрувати</button>
+            <a href="/manager/products" style="padding: 10px 15px; color: #e74c3c; text-decoration: none; font-weight: 500;">Скинути</a>
+        </form>
     </div>
+
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Назва товару</th>
+                <th>Виробник</th>
+                <th>Характеристики</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prod in products %}
+            <tr>
+                <td><code>{{ prod[0] }}</code></td>
+                <td><strong>{{ prod[2] }}</strong></td>
+                <td>{{ prod[3] }}</td>
+                <td><small style="color: #666;">{{ prod[4] }}</small></td>
+                <td>
+                    <a href="/manager/products/edit/{{ prod[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 15px; font-weight: 500;">✎ Ред.</a>
+                    <a href="/manager/products/delete/{{ prod[0] }}" style="color: #e74c3c; text-decoration: none; font-weight: 500;" onclick="return confirm('Ви впевнені?')">✕ Вид.</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align: center; padding: 20px; color: gray;">Товарів у цій категорії не знайдено.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}

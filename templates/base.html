@@ -73,7 +73,6 @@
 
         /* ── СТИЛІ ДЛЯ ПРОФЕСІЙНОГО ДРУКУ (ЧАСТИНА 1) ── */
         @media print {
-            /* Приховуємо навігацію, кнопки дій, форми пошуку та елементи редагування/видалення */
             .top-nav, 
             .header-actions, 
             .btn-primary, 
@@ -87,7 +86,6 @@
                 display: none !important;
             }
 
-            /* Зміна кольорової палітри сайту на строго чорно-білу для принтера */
             body {
                 background-color: #ffffff !important;
                 color: #000000 !important;
@@ -96,7 +94,6 @@
                 margin: 0;
             }
 
-            /* Розтягуємо контейнер на всю ширину сторінки А4 */
             .dashboard-container {
                 width: 100% !important;
                 max-width: 100% !important;
@@ -105,7 +102,6 @@
                 margin: 0 !important;
             }
 
-            /* Форматування класичної друкованої таблиці документа */
             .styled-table {
                 width: 100% !important;
                 border: 1px solid #000000 !important;
@@ -136,12 +132,19 @@
     <nav class="top-nav">
         <div class="nav-logo">ZLAGODA</div>
         <div class="nav-links">
-            <a href="/manager/employees" class="{% if request.endpoint == 'manager_employees' %}active{% endif %}">Працівники</a>
-            <a href="/manager/products" class="{% if request.endpoint == 'manager_products' %}active{% endif %}">Довідник товарів</a>
-            <a href="/manager/store_products" class="{% if request.endpoint == 'manager_store_products' %}active{% endif %}">На полицях</a>
-            <a href="/manager/checks" class="{% if request.endpoint == 'manager_checks' %}active{% endif %}">Чеки</a>
-            <a href="/manager/categories" class="{% if request.endpoint == 'manager_categories' %}active{% endif %}">Категорії</a>
-            <a href="/manager/customers" class="{% if request.endpoint == 'manager_customers' %}active{% endif %}">Клієнти</a>
+            {% if session.get('role')|string|lower == 'manager' or session.get('role')|string|lower == 'менеджер' %}
+                <a href="/manager/employees" class="{% if request.endpoint == 'manager_employees' %}active{% endif %}">Працівники</a>
+                <a href="/manager/products" class="{% if request.endpoint == 'manager_products' %}active{% endif %}">Довідник товарів</a>
+                <a href="/manager/store_products" class="{% if request.endpoint == 'manager_store_products' %}active{% endif %}">На полицях</a>
+                <a href="/manager/checks" class="{% if request.endpoint == 'manager_checks' %}active{% endif %}">Чеки</a>
+                <a href="/manager/categories" class="{% if request.endpoint == 'manager_categories' %}active{% endif %}">Категорії</a>
+                <a href="/manager/customers" class="{% if request.endpoint == 'manager_customers' %}active{% endif %}">Клієнти</a>
+            {% else %}
+                <a href="/cashier/profile" class="{% if request.endpoint == 'cashier_profile' %}active{% endif %}">👤 Мій профіль</a>
+                <a href="/cashier/sell" class="{% if request.endpoint == 'cashier_sell' %}active{% endif %}" style="font-weight: 600; color: var(--primary-pink);">🛒 Оформити продаж</a>
+                <a href="/cashier/my-checks" class="{% if request.endpoint == 'cashier_my_checks' %}active{% endif %}">🧾 Мої чеки</a>
+                <a href="/cashier/products" class="{% if request.endpoint == 'cashier_products' %}active{% endif %}">📦 Товари на полицях</a>
+            {% endif %}
             <a href="/logout" class="logout-btn">Вихід</a>
         </div>
     </nav>

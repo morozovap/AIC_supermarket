@@ -66,7 +66,6 @@ def get_product_details_by_upc(upc):
     return execute_query(query, (upc,), fetch=True)
 
 def get_product_quantity(upc):
-    """Return current stock quantity for a given UPC."""
     query = "SELECT products_number FROM store_product WHERE upc = %s;"
     result = execute_query(query, (upc,), fetch=True)
     return result[0][0] if result else 0
@@ -87,7 +86,6 @@ def update_store_product(upc, upc_prom, id_product, selling_price, products_numb
     execute_query(query, (upc_prom, id_product, selling_price, products_number, promotional_product, upc))
 
 def decrease_quantity(upc, amount):
-    """Decrease product stock after a sale. Raises ValueError if not enough stock."""
     query = """
     UPDATE store_product 
     SET products_number = products_number - %s 
@@ -102,13 +100,7 @@ def delete_store_product(upc):
     query = "DELETE FROM store_product WHERE upc = %s;"
     execute_query(query, (upc,))
 
-if __name__ == '__main__':
-    for sp in get_all_store_products_by_quantity():
-        print(sp)
-        
 def search_store_products(search_text='', promo_filter='all', sort_by='name'):
-    """Універсальна функція для пошуку, фільтрації та сортування товарів у магазині."""
-    
     query = """
         SELECT sp.upc, sp.upc_prom, sp.id_product, sp.selling_price, sp.products_number,
                sp.promotional_product, p.product_name 
@@ -118,18 +110,16 @@ def search_store_products(search_text='', promo_filter='all', sort_by='name'):
     """
     params = []
 
-    # 1. Пошук за назвою (нечутливий до регістру)
     if search_text:
-        query += " AND p.product_name ILIKE %s"
+        query += " AND (p.product_name ILIKE %s OR sp.upc ILIKE %s)"
+        params.append(f"%{search_text}%")
         params.append(f"%{search_text}%")
 
-    # 2. Фільтр: Акційний / Неакційний
     if promo_filter == 'promo':
         query += " AND sp.promotional_product = TRUE"
     elif promo_filter == 'non_promo':
         query += " AND sp.promotional_product = FALSE"
 
-    # 3. Сортування
     if sort_by == 'qty_asc':
         query += " ORDER BY sp.products_number ASC"
     elif sort_by == 'qty_desc':
@@ -138,3 +128,7 @@ def search_store_products(search_text='', promo_filter='all', sort_by='name'):
         query += " ORDER BY p.product_name ASC"
 
     return execute_query(query, tuple(params) if params else None, fetch=True)
+
+if __name__ == '__main__':
+    for sp in get_all_store_products_by_quantity():
+        print(sp)

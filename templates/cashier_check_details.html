@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 700px;">
+    <div class="header-actions">
+        <h2>Деталізація чека № {{ check_number }}</h2>
+        <a href="/cashier/my-checks" style="color: var(--primary-pink); text-decoration: none; font-weight: 500;">🡨 Назад до списку</a>
+    </div>
+
+    <table class="styled-table" style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Назва товару</th>
+                <th>Ціна на момент продажу</th>
+                <th>Продана кількість</th>
+                <th>Загальна вартість</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in details %}
+            <tr>
+                <td><strong>{{ d[2] }}</strong></td>
+                <td>{{ d[1] }} грн</td>
+                <td>{{ d[0] }} шт/кг</td>
+                <td><strong>{{ d[0] * d[1] }} грн</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
