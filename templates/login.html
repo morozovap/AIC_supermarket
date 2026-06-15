@@ -1,27 +1,29 @@
 {% extends 'base.html' %}
 
-{% block title %}Вхід - ZLAGODA{% endblock %}
+{% block title %}Вхід — ZLAGODA{% endblock %}
 
 {% block content %}
 <div class="login-container">
     <h2>ZLAGODA</h2>
-    <p style="margin-bottom: 30px; font-size: 14px;">Система управління міні-супермаркетом</p>
-    
+    <p style="margin-bottom: 30px; font-size: 14px; color: #aaa;">Система управління міні-супермаркетом</p>
+
     {% if error %}
         <div class="error-msg">{{ error }}</div>
     {% endif %}
 
     <form method="POST" action="/login">
         <div class="form-group">
-            <label for="username">Номер телефону (Логін)</label>
-            <input type="text" id="username" name="username" class="form-control" placeholder="+380..." required>
+            <label for="username">Логін</label>
+            <input type="text" id="username" name="username" class="form-control"
+                   placeholder="Введіть логін" required autofocus>
         </div>
-        
+
         <div class="form-group">
             <label for="password">Пароль</label>
-            <input type="password" id="password" name="password" class="form-control" placeholder="Введіть пароль" required>
+            <input type="password" id="password" name="password" class="form-control"
+                   placeholder="Введіть пароль" required>
         </div>
-        
+
         <button type="submit" class="btn-primary">Увійти</button>
     </form>
 </div>
