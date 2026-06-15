@@ -38,12 +38,14 @@ def execute_query(query, params=None, fetch=False):
         cursor.execute(query, params)
         if fetch:
             result = cursor.fetchall()
+            if result and hasattr(result[0], 'values'):
+                return [tuple(row.values()) for row in result]
+            
             return result
         conn.commit()
     finally:
         cursor.close()
         conn.close()
-
 if __name__ == '__main__':
     print("Перевірка підключення та RealDictCursor...")
     try:

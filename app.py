@@ -48,17 +48,38 @@ def login():
         login_input = request.form['username']
         password    = request.form['password']
 
-        emp = employee.get_employee_by_login(login_input)
-        if emp and verify_password(password, emp[13]):  # emp[13] = password_hash
-            session['id_employee'] = emp[0]   # id_employee
-            session['role']        = emp[4]   # empl_role: 'Manager' або 'Cashier'
-            session['name']        = f"{emp[1]} {emp[2]}"  # прізвище + ім'я
-            if emp[4] == 'Manager':
-                return redirect(url_for('manager_employees'))
+        emp_data = employee.get_employee_by_login(login_input)
+        
+        if emp_data:
+            # Беремо перший рядок (на випадок якщо БД повернула список)
+            emp = emp_data[0] if isinstance(emp_data, list) else emp_data
+            
+            # --- УНІВЕРСАЛЬНИЙ ФІКС ---
+            # Перетворюємо словник на звичайний список значень
+            if hasattr(emp, 'values'):
+                emp_list = list(emp.values())
             else:
-                return redirect(url_for('cashier_sell'))
+                emp_list = list(emp)
+                
+            print("ДАНІ ПРАЦІВНИКА (СПИСОК):", emp_list) 
+            
+            # Тепер безпечно беремо елементи за номерами
+            password_hash = emp_list[-1]  # Останній елемент (пароль)
+            
+            if verify_password(password, password_hash):
+                session['id_employee'] = emp_list[0]  # ID
+                session['role']        = emp_list[4]  # Роль (Manager/Cashier)
+                session['name']        = f"{emp_list[1]} {emp_list[2]}" # Прізвище та Ім'я
+                
+                if session['role'] == 'Manager':
+                    return redirect(url_for('manager_employees'))
+                else:
+                    return redirect(url_for('cashier_sell'))
+            else:
+                error = "Неправильний логін або пароль"
         else:
             error = "Неправильний логін або пароль"
+            
     return render_template('login.html', error=error)
 
 @app.route('/logout')
@@ -160,6 +181,76 @@ def edit_product(id_product):
     prod = product.get_product_by_id(id_product)
     categories = category.get_all_categories() or []
     return render_template('edit_product.html', product=prod, categories=categories)
+
+# --- ТОВАРИ В МАГАЗИНІ (STORE_PRODUCT) ---
+
+# 1. Перегляд усіх товарів на полицях
+@app.route('/manager/store_products')
+@manager_required
+def manager_store_products():
+    products = store_product.get_all_store_products_by_name() or []
+    return render_template('store_products.html', products=products)
+
+# 2. Додавання нової партії (з автоматичною переоцінкою)
+@app.route('/manager/store_products/add', methods=['GET', 'POST'])
+@manager_required
+def add_store_product():
+    error = None
+    if request.method == 'POST':
+        data = request.form
+        try:
+            # 1. Додаємо нову партію товару на полицю
+            store_product.add_store_product(
+                data['upc'],
+                data.get('upc_prom') or None,
+                data['id_product'],
+                data['selling_price'],
+                data['products_number'],
+                data.get('promotional_product') == 'on'
+            )
+            
+            # 2. ГЛОБАЛЬНА ПЕРЕОЦІНКА
+            # Оновлюємо ціну для всіх існуючих неакційних партій цього товару
+            from db import execute_query
+            update_price_query = """
+                UPDATE store_product 
+                SET selling_price = %s 
+                WHERE id_product = %s AND promotional_product = FALSE;
+            """
+            execute_query(update_price_query, (data['selling_price'], data['id_product']))
+            
+            # Якщо все успішно — повертаємося до списку товарів у магазині
+            return redirect(url_for('manager_store_products'))
+            
+        except Exception as e:
+            print(f"Помилка при додаванні партії: {e}")
+            error = f"Помилка бази даних: Можливо, товар з таким UPC вже існує, або не всі поля заповнені."
+
+    # Якщо це GET-запит або сталася помилка — показуємо форму
+    base_products = product.get_all_products() or []
+    return render_template('add_store_product.html', products=base_products, error=error)
+
+# 3. Видалення товару з полиці
+@app.route('/manager/store_products/delete/<upc>')
+@manager_required
+def delete_store_product(upc):
+    store_product.delete_store_product(upc)
+    return redirect(url_for('manager_store_products'))
+
+# 4. Ручне редагування ціни/кількості
+@app.route('/manager/store_products/edit/<upc>', methods=['GET', 'POST'])
+@manager_required
+def edit_store_product(upc):
+    if request.method == 'POST':
+        store_product.update_store_product(
+            upc, request.form['upc_prom'], request.form['id_product'],
+            request.form['selling_price'], request.form['products_number'],
+            request.form.get('promotional_product') == 'on'
+        )
+        return redirect(url_for('manager_store_products'))
+    
+    prod_data = store_product.get_product_details_by_upc(upc)
+    return render_template('edit_store_product.html', product=prod_data[0], upc=upc)
 
 # ── КАТЕГОРІЇ ───────────────────────────────────────────────────
 @app.route('/manager/categories')

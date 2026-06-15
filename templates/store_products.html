@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-container">
+    <h2>Товари в магазині</h2>
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>UPC</th><th>Назва</th><th>Ціна</th><th>Кількість</th><th>Акція</th><th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td>{{ p[0] }}</td>
+                <td>{{ p[6] }}</td>
+                <td>{{ p[3] }} грн</td>
+                <td>{{ p[4] }}</td>
+                <td>{{ 'Так' if p[5] else 'Ні' }}</td>
+                <td>
+                    <a href="/manager/store_products/edit/{{ p[0] }}">Ред.</a> |
+                    <a href="/manager/store_products/delete/{{ p[0] }}" onclick="return confirm('Видалити?')">Вид.</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

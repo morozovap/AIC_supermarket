@@ -6,7 +6,10 @@
 <div class="dashboard-container">
     <div class="header-actions">
         <h2>Довідник товарів</h2>
-        <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/manager/products/add'">+ Додати товар</button>
+        <div style="display: flex; gap: 15px;">
+            <button class="btn-primary" style="width: auto; margin-top: 0;" onclick="window.location.href='/manager/products/add'">+ Додати товар</button>
+            <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green, #27ae60); border-color: var(--primary-green, #27ae60);" onclick="window.location.href='/manager/store_products/add'">+ Прийняти партію</button>
+        </div>
     </div>
 
     <div class="table-wrapper">

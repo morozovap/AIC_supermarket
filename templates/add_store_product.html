@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Прийом партії - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 600px; margin-top: 40px;">
+    <h2>Оформлення нової поставки</h2>
+    
+    {% if error %}
+    <div style="background-color: #ffcccc; color: #cc0000; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Штрих-код партії (UPC) *</label>
+            <input type="text" name="upc" class="form-control" required maxlength="12" placeholder="Відскануйте або введіть штрих-код">
+        </div>
+        
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <label>Базовий товар (з довідника) *</label>
+                <a href="/manager/products/add" target="_blank" style="color: var(--primary-pink); font-size: 13px; text-decoration: none; font-weight: bold;">+ Створити новий товар</a>
+            </div>
+            <select name="id_product" class="form-control" required>
+                <option value="">-- Оберіть товар зі списку --</option>
+                {% for p in products %}
+                <option value="{{ p[0] }}">{{ p[2] }} ({{ p[3] }})</option>
+                {% endfor %}
+            </select>
+            <small style="color: gray;">Якщо створили новий товар, оновіть цю сторінку (F5), щоб він з'явився у списку.</small>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Кількість (шт/кг) *</label>
+                <input type="number" name="products_number" class="form-control" min="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Нова ціна продажу (грн) *</label>
+                <input type="number" step="0.01" name="selling_price" class="form-control" required>
+            </div>
+        </div>
+        
+        <div style="background-color: #fff9fa; border-left: 4px solid var(--primary-pink); padding: 10px; margin-bottom: 20px; font-size: 13px; color: #555;">
+            <strong>Увага:</strong> Вказана вище ціна автоматично переоцінить усі попередні партії цього товару на полицях.
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
+            <input type="checkbox" name="promotional_product" id="promo" style="width: auto;">
+            <label for="promo" style="margin: 0; font-weight: bold; color: #e67e22;">Це акційний товар (уцінка)</label>
+        </div>
+
+        <div class="form-group">
+            <label>UPC акційного аналога (якщо є)</label>
+            <input type="text" name="upc_prom" class="form-control" maxlength="12" placeholder="Заповнюється лише для акцій">
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Зберегти та провести партію</button>
+    </form>
+</div>
+{% endblock %}
