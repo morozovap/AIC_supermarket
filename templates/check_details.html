@@ -1,15 +1,119 @@
 {% extends 'base.html' %}
+{% block title %}Чек №{{ details[0][0] if details else '—' }} — ZLAGODA{% endblock %}
+
 {% block content %}
-<div class="dashboard-container">
-    <h2>Деталі чека №{{ details[0][0] if details else 'N/A' }}</h2>
-    <table class="styled-table">
-        <thead><tr><th>Товар</th><th>К-сть</th><th>Ціна</th></tr></thead>
-        <tbody>
-            {% for d in details %}
-            <tr><td>{{ d[7] }}</td><td>{{ d[8] }}</td><td>{{ d[9] }} грн</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <a href="/manager/checks" class="btn-primary" style="display:inline-block; width: auto;">Назад</a>
+<style>
+    .check-wrap { width: 90%; max-width: 750px; margin: 40px auto; }
+
+    .receipt-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 36px 40px;
+        box-shadow: 0 10px 30px rgba(232,168,182,.15);
+        margin-bottom: 20px;
+    }
+    .receipt-header { text-align: center; border-bottom: 2px dashed #F5E0E4; padding-bottom: 20px; margin-bottom: 24px; }
+    .receipt-header h2 { margin: 0 0 4px; color: var(--primary-pink); font-family:'Playfair Display',serif; font-size:26px; }
+    .receipt-header p { margin: 0; font-size: 13px; color: #aaa; }
+
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; margin-bottom: 24px; }
+    .meta-item label { font-size: 11px; font-weight:700; text-transform:uppercase; color: var(--primary-green); letter-spacing:.06em; }
+    .meta-item span  { display:block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-top: 2px; }
+
+    .items-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px; }
+    .items-table thead tr { background: var(--primary-pink); color: #fff; }
+    .items-table th, .items-table td { padding: 12px 14px; }
+    .items-table td { border-bottom: 1px solid #eee; }
+    .items-table tbody tr:hover { background: #FFF9FA; }
+    .text-right { text-align: right; }
+
+    .totals-block { background: #FFF9FA; border-radius: 14px; padding: 16px 20px; border: 2px solid #F5E0E4; }
+    .totals-row { display:flex; justify-content:space-between; font-size:14px; padding:5px 0; }
+    .totals-row.grand { font-size:18px; font-weight:700; color:var(--primary-pink); border-top:1px solid #F5E0E4; margin-top:8px; padding-top:12px; }
+
+    .actions { display:flex; gap:12px; margin-top:20px; }
+    .btn-back { background: var(--primary-green); color: #fff; border:none; padding:13px 28px; border-radius:50px; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
+    .btn-print { background: var(--primary-pink); color: #fff; border:none; padding:13px 28px; border-radius:50px; font-size:14px; font-weight:700; cursor:pointer; }
+    .btn-back:hover  { background: #7fa07f; }
+    .btn-print:hover { background: #D697A5; }
+</style>
+
+<div class="check-wrap">
+  {% if details %}
+    {% set d = details[0] %}
+    {# d: check_number[0], id_employee[2], card_number[3], print_date[3], sum_total[4], vat[5],
+          upc[6], product_name[7], product_number[8], selling_price[9] #}
+
+    <div class="receipt-card" id="receipt-print">
+        <div class="receipt-header">
+            <h2>ZLAGODA</h2>
+            <p>Продуктовий міні-супермаркет</p>
+        </div>
+
+        <div class="meta-grid">
+            <div class="meta-item">
+                <label>Номер чека</label>
+                <span>{{ d[0] }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Дата та час</label>
+                <span>{{ d[3] }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Касир (ID)</label>
+                <span>{{ d[2] }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Карта клієнта</label>
+                <span>{{ d[3] if d[3] else '—' }}</span>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Назва товару</th>
+                    <th>UPC</th>
+                    <th class="text-right">К-сть</th>
+                    <th class="text-right">Ціна / од.</th>
+                    <th class="text-right">Сума</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in details %}
+                <tr>
+                    <td>{{ row[7] }}</td>
+                    <td style="color:#aaa; font-size:12px;">{{ row[6] }}</td>
+                    <td class="text-right">{{ row[8] }}</td>
+                    <td class="text-right">{{ "%.2f"|format(row[9]) }} грн</td>
+                    <td class="text-right"><strong>{{ "%.2f"|format(row[8] * row[9]) }} грн</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals-block">
+            <div class="totals-row">
+                <span>ПДВ (20%):</span>
+                <span>{{ "%.2f"|format(d[5]) }} грн</span>
+            </div>
+            <div class="totals-row grand">
+                <span>Разом до сплати:</span>
+                <span>{{ "%.2f"|format(d[4]) }} грн</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a href="/manager/checks" class="btn-back">← Назад до чеків</a>
+        <button class="btn-print" onclick="window.print()">🖨 Друк</button>
+    </div>
+
+  {% else %}
+    <div class="receipt-card" style="text-align:center; color:#aaa;">
+        <p>Чек не знайдено.</p>
+        <a href="/manager/checks" class="btn-back">← Назад</a>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

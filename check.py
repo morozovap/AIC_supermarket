@@ -73,12 +73,12 @@ def get_total_units_sold_by_product_and_period(upc, start_date, end_date):
     """
     return execute_query(query, (upc, start_date, end_date), fetch=True)
 
-def add_receipt(check_number, id_employee, card_number, print_date, sum_total, vat):
+def add_receipt(check_number, id_employee, card_number, print_date, sum_total):
     query = """
-    INSERT INTO receipt (check_number, id_employee, card_number, print_date, sum_total, vat)
-    VALUES (%s, %s, %s, %s, %s, %s);
+    INSERT INTO receipt (check_number, id_employee, card_number, print_date, sum_total)
+    VALUES (%s, %s, %s, %s, %s);
     """
-    execute_query(query, (check_number, id_employee, card_number, print_date, sum_total, vat))
+    execute_query(query, (check_number, id_employee, card_number, print_date, sum_total))
 
 def add_sale(upc, check_number, product_number, selling_price):
     query = """
