@@ -1,47 +1,54 @@
+import os
 import psycopg2
-from psycopg2 import Error
+import psycopg2.extras
+from contextlib import contextmanager
 
-DB_CONFIG = {
-    'dbname': 'zlagoda',
-    'user': 'zlagoda_admin',
-    'password': 'bdPassword2026',
-    'host': 'localhost',
-    'port': '5432'
-}
+DB_HOST = os.environ.get('DB_HOST', 'localhost')
+DB_PORT = os.environ.get('DB_PORT', '5432')
+DB_NAME = os.environ.get('DB_NAME', 'zlagoda')
+DB_USER = os.environ.get('DB_USER', 'zlagoda_admin')
+DB_PASSWORD = os.environ.get('DB_PASSWORD', 'bdPassword2026')
 
 def get_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
+
+@contextmanager
+def transaction():
+    conn = get_connection()
     try:
-        connection = psycopg2.connect(**DB_CONFIG)
-        return connection
-    except Error as e:
-        print(f"Помилка підключення до БД: {e}")
-        return None
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def execute_query(query, params=None, fetch=False):
-    connection = get_connection()
-    if not connection:
-        return None
-
-    cursor = connection.cursor()
-    result = None
-
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
     try:
         cursor.execute(query, params)
         if fetch:
             result = cursor.fetchall()
-        else:
-            connection.commit()
-    except Error as e:
-        print(f"Помилка виконання запиту: {e}")
-        connection.rollback()
+            return result
+        conn.commit()
     finally:
         cursor.close()
-        connection.close()
-
-    return result
+        conn.close()
 
 if __name__ == '__main__':
-    conn = get_connection()
-    if conn:
-        print("Супер! Python успішно підключився до бази даних Zlagoda!")
-        conn.close()
+    print("Перевірка підключення та RealDictCursor...")
+    try:
+        result = execute_query("SELECT * FROM employee LIMIT 1;", fetch=True)
+        print("Успіх! Ось як тепер виглядають дані:")
+        print(result)
+    except Exception as e:
+        print(f"Помилка підключення: {e}")
