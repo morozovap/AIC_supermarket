@@ -223,13 +223,46 @@ def edit_product(id_product):
 @app.route('/manager/store_products')
 @manager_required
 def manager_store_products():
-    # Отримуємо параметри з URL (GET-запит)
-    search = request.args.get('search', '')
+    search = request.args.get('search', '').strip()
     promo_filter = request.args.get('promo_filter', 'all')
-    sort_by = request.args.get('sort_by', 'name')
+    sort_by = request.args.get('sort_by', 'name')  # 'name' або 'quantity'
 
-    # Викликаємо нашу нову розумну функцію
-    products = store_product.search_store_products(search, promo_filter, sort_by) or []
+    from db import execute_query
+
+    # Базовий запит для виведення товарів на полицях
+    query = """
+        SELECT sp.upc, sp.upc_prom, sp.id_product, sp.selling_price, sp.products_number, 
+               sp.promotional_product, p.product_name, c.category_name
+        FROM store_product sp
+        JOIN product p ON sp.id_product = p.id_product
+        JOIN category c ON p.category_number = c.category_number
+        WHERE 1=1
+    """
+    params = []
+
+    if search:
+        query += " AND (p.product_name ILIKE %s OR sp.upc ILIKE %s)"
+        params.append(f"%{search}%")
+        params.append(f"%{search}%")
+
+    if promo_filter == 'promo':
+        query += " AND sp.promotional_product = TRUE"
+    elif promo_filter == 'non_promo':
+        query += " AND sp.promotional_product = FALSE"
+
+    # ФІКС СОРТУВАННЯ: Повна підтримка всіх трьох режимів з інтерфейсу
+    if sort_by == 'qty_desc':
+        query += " ORDER BY sp.products_number DESC, p.product_name ASC;"
+    elif sort_by == 'qty_asc':
+        query += " ORDER BY sp.products_number ASC, p.product_name ASC;"
+    else:
+        query += " ORDER BY p.product_name ASC, sp.products_number DESC;"
+
+    try:
+        products = execute_query(query, tuple(params) if params else None, fetch=True) or []
+    except Exception as e:
+        products = []
+        print(f"Помилка сортування товарів на полицях: {e}")
     
     return render_template('manager_store_products.html', 
                            products=products, 
@@ -355,12 +388,21 @@ def promo_store_product(upc):
                 else:
                     store_product.add_store_product(promo_upc, None, prod[1], promo_price, promo_qty, True)
                 
+                # 1. Оновлюємо оригінальний товар (зменшуємо к-сть і зв'язуємо з акційним UPC)
                 new_regular_qty = prod[3] - promo_qty
                 execute_query("""
                     UPDATE store_product 
                     SET products_number = %s, upc_prom = %s 
                     WHERE upc = %s;
                 """, (new_regular_qty, promo_upc, upc))
+                
+                # ── ФІКС АВТОМАТИЧНОГО ЗВ'ЯЗКУ (БЛОК 3) ──
+                # 2. Акційному товару теж залізобетонно прописуємо лінк назад на його оригінал
+                execute_query("""
+                    UPDATE store_product 
+                    SET upc_prom = %s 
+                    WHERE upc = %s;
+                """, (upc, promo_upc))
                 
                 return redirect(url_for('manager_store_products'))
             except Exception as e:
@@ -480,12 +522,60 @@ def edit_customer(card_number):
 @app.route('/manager/checks')
 @login_required
 def manager_checks():
+    # Отримуємо параметри фільтрації з GET-запиту
+    cashier_filter = request.args.get('cashier_filter', 'all')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+
+    from db import execute_query
+
+    # 1. Отримуємо список усіх касирів для випадаючого списку (Вимога M17)
     try:
-        checks_list = check.get_all_receipts() or []
+        cashiers = execute_query(
+            "SELECT id_employee, empl_surname, empl_name FROM employee WHERE LOWER(empl_role) IN ('cashier', 'касир') ORDER BY empl_surname;", 
+            fetch=True
+        ) or []
+    except Exception as e:
+        cashiers = []
+        print(f"Помилка завантаження списку касирів: {e}")
+
+    # 2. Будуємо динамічний SQL-запит для чеків із підтягуванням ПІБ касира
+    query = """
+        SELECT r.check_number, r.card_number, r.print_date, r.sum_total, r.vat, e.empl_surname, e.empl_name
+        FROM receipt r
+        JOIN employee e ON r.id_employee = e.id_employee
+        WHERE 1=1
+    """
+    params = []
+
+    # Фільтр за конкретним касиром (M17)
+    if cashier_filter != 'all':
+        query += " AND r.id_employee = %s"
+        params.append(cashier_filter)
+        
+    # Фільтр за періодом дат (M18)
+    if start_date:
+        query += " AND r.print_date::date >= %s::date"
+        params.append(start_date)
+        
+    if end_date:
+        query += " AND r.print_date::date <= %s::date"
+        params.append(end_date)
+
+    query += " ORDER BY r.print_date DESC;"
+
+    try:
+        checks_list = execute_query(query, tuple(params) if params else None, fetch=True) or []
     except Exception as e:
         checks_list = []
-        print(f"Помилка БД: {e}")
-    return render_template('manager_checks.html', checks=checks_list)
+        print(f"Помилка БД при фільтрації чеків менеджером: {e}")
+
+    return render_template('manager_checks.html', 
+                           checks=checks_list, 
+                           cashiers=cashiers,
+                           cashier_filter=cashier_filter,
+                           start_date=start_date,
+                           end_date=end_date)
 
 @app.route('/manager/check/<check_number>')
 @login_required
@@ -704,52 +794,123 @@ def cashier_products():
 def manager_reports():
     from db import execute_query
     
-    # Значення за замовчуванням (поточний місяць)
-    start_date = request.args.get('start_date', '2026-06-01')
-    end_date = request.args.get('end_date', '2026-06-30')
+    # Визначаємо дати за замовчуванням (поточний місяць 2026 року)
+    today = datetime.date.today()
+    default_start = today.replace(day=1).strftime('%Y-%m-%d')
+    default_end = today.strftime('%Y-%m-%d')
+
+    start_date = request.args.get('start_date', default_start)
+    end_date = request.args.get('end_date', default_end)
     
-    # 1. Загальні фінансові показники за період
+    # Параметри для нових точкових звітів (M19 та M21)
+    target_cashier = request.args.get('target_cashier', '').strip()
+    target_product = request.args.get('target_product', '').strip()
+
+    # 1. Списки для випадаючих списків фільтрації
+    try:
+        cashiers_list = execute_query(
+            "SELECT id_employee, empl_surname, empl_name FROM employee WHERE LOWER(empl_role) IN ('cashier', 'касир') ORDER BY empl_surname;", 
+            fetch=True
+        ) or []
+    except Exception as e:
+        cashiers_list = []
+        print(f"Помилка завантаження касирів для звітів: {e}")
+
+    # 2. Вимога M20 — Загальна сума (виторг та ПДВ) усіх касирів за період
     finance_query = """
         SELECT COUNT(check_number) as total_checks,
                COALESCE(SUM(sum_total), 0) as total_revenue,
                COALESCE(SUM(vat), 0) as total_vat
-        FROM receipts
-        WHERE print_date >= %s AND print_date <= %s;
+        FROM receipt
+        WHERE print_date::date BETWEEN %s::date AND %s::date;
     """
-    finance_res = execute_query(finance_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True)
-    finance = finance_res[0] if finance_res else (0, 0, 0)
-    
-    # 2. Рейтинг касирів за виторгом
-    cashier_query = """
+    try:
+        finance_res = execute_query(finance_query, (start_date, end_date), fetch=True)
+        finance = finance_res[0] if finance_res else (0, 0, 0)
+    except Exception as e:
+        finance = (0, 0, 0)
+        print(f"Помилка M20: {e}")
+
+    # 3. Вимога M19 — Загальна сума конкретного касира за період
+    cashier_revenue = 0.0
+    selected_cashier_name = ""
+    if target_cashier:
+        m19_query = """
+            SELECT COALESCE(SUM(sum_total), 0) 
+            FROM receipt 
+            WHERE id_employee = %s AND print_date::date BETWEEN %s::date AND %s::date;
+        """
+        try:
+            res = execute_query(m19_query, (target_cashier, start_date, end_date), fetch=True)
+            cashier_revenue = float(res[0][0]) if res else 0.0
+            
+            # Беремо ім'я для гарного відображення в результатах
+            for c in cashiers_list:
+                if c[0] == target_cashier:
+                    selected_cashier_name = f"{c[1]} {c[2]}"
+                    break
+        except Exception as e:
+            print(f"Помилка M19: {e}")
+
+    # 4. Вимога M21 — Кількість одиниць певного товару, проданого за період
+    product_sales_results = []
+    if target_product:
+        m21_query = """
+            SELECT p.product_name, sp.upc, COALESCE(SUM(s.product_number), 0) as sold_qty, COALESCE(SUM(s.product_number * s.selling_price), 0) as total_sum
+            FROM sale s
+            JOIN store_product sp ON s.upc = sp.upc
+            JOIN product p ON sp.id_product = p.id_product
+            JOIN receipt r ON s.check_number = r.check_number
+            WHERE (sp.upc = %s OR p.product_name ILIKE %s)
+              AND r.print_date::date BETWEEN %s::date AND %s::date
+            GROUP BY p.product_name, sp.upc;
+        """
+        try:
+            product_sales_results = execute_query(
+                m21_query, (target_product, f"%{target_product}%", start_date, end_date), fetch=True
+            ) or []
+        except Exception as e:
+            print(f"Помилка M21: {e}")
+
+    # 5. Стандартний рейтинг касирів та Топ-5 (для загального аналізу)
+    cashier_rank_query = """
         SELECT r.id_employee, e.empl_surname, e.empl_name, COUNT(r.check_number), SUM(r.sum_total)
-        FROM receipts r
+        FROM receipt r
         JOIN employee e ON r.id_employee = e.id_employee
-        WHERE r.print_date >= %s AND r.print_date <= %s
+        WHERE r.print_date::date BETWEEN %s::date AND %s::date
         GROUP BY r.id_employee, e.empl_surname, e.empl_name
         ORDER BY SUM(r.sum_total) DESC;
     """
-    cashiers = execute_query(cashier_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True) or []
-    
-    # 3. Топ-5 найпопулярніших товарів на полицях
     popular_query = """
         SELECT sp.upc, p.product_name, SUM(s.product_number) as sold_qty, SUM(s.product_number * s.selling_price) as total_sales
         FROM sale s
         JOIN store_product sp ON s.upc = sp.upc
         JOIN product p ON sp.id_product = p.id_product
-        JOIN receipts r ON s.check_number = r.check_number
-        WHERE r.print_date >= %s AND r.print_date <= %s
+        JOIN receipt r ON s.check_number = r.check_number
+        WHERE r.print_date::date BETWEEN %s::date AND %s::date
         GROUP BY sp.upc, p.product_name
         ORDER BY sold_qty DESC
         LIMIT 5;
     """
-    popular_products = execute_query(popular_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True) or []
+    try:
+        cashiers = execute_query(cashier_rank_query, (start_date, end_date), fetch=True) or []
+        popular_products = execute_query(popular_query, (start_date, end_date), fetch=True) or []
+    except Exception as e:
+        cashiers, popular_products = [], []
+        print(f"Помилка завантаження рейтингів: {e}")
 
     return render_template('manager_reports.html', 
                            finance=finance, 
                            cashiers=cashiers, 
                            products=popular_products,
+                           cashiers_list=cashiers_list,
                            start_date=start_date, 
-                           end_date=end_date)
+                           end_date=end_date,
+                           target_cashier=target_cashier,
+                           cashier_revenue=cashier_revenue,
+                           selected_cashier_name=selected_cashier_name,
+                           target_product=target_product,
+                           product_sales_results=product_sales_results)
 
 if __name__ == '__main__':
     app.run(debug=True)

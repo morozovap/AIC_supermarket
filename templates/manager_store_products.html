@@ -6,7 +6,7 @@
 <div class="dashboard-container">
     <div class="header-actions">
         <h2>Товари в залі (На полицях)</h2>
-        <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green);" onclick="window.location.href='/manager/store_products/add'">+ Прийняти нову партію</button>
+        <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green);" onclick="window.location.href='/manager/store_products/add'">Прийняти нову партію</button>
     </div>
 
     <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
@@ -29,7 +29,7 @@
             <div style="width: 200px;">
                 <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Сортування</label>
                 <select name="sort_by" class="form-control" style="padding: 10px;">
-                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>За алфавітом (А-Я)</option>
+                    <option value="name" {% if sort_by == 'name' or not sort_by %}selected{% endif %}>За алфавітом (А-Я)</option>
                     <option value="qty_desc" {% if sort_by == 'qty_desc' %}selected{% endif %}>Найбільше залишків</option>
                     <option value="qty_asc" {% if sort_by == 'qty_asc' %}selected{% endif %}>Закінчуються</option>
                 </select>
@@ -57,7 +57,7 @@
                 <tr style="{% if p[4] == 0 %}background-color: #fff0f0;{% endif %}">
                     <td><strong>{{ p[0] }}</strong><br><small style="color:gray;">ID: {{ p[2] }}</small></td>
                     <td>{{ p[6] }}</td>
-                    <td><strong style="color: #27ae60;">{{ p[3] }} грн</strong></td>
+                    <td><strong style="color: #27ae60;">{{ "%.2f"|format(p[3]) }} грн</strong></td>
                     <td>
                         <span style="font-size: 16px; font-weight: 600; {% if p[4] == 0 %}color: red;{% endif %}">
                             {{ p[4] }}
@@ -65,7 +65,7 @@
                     </td>
                     <td>
                         {% if p[5] %}
-                            <span style="background: #ffeaa7; color: #d35400; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">🔥 Акція</span>
+                            <span style="background: #ffeaa7; color: #d35400; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Акція</span>
                         {% else %}
                             <span style="background: #e8f8f5; color: #16a085; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Звичайний</span>
                         {% endif %}
@@ -74,7 +74,7 @@
                         <a href="/manager/store_products/edit/{{ p[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 10px;">✎ Ред.</a>
                         
                         {% if not p[5] and p[4] > 0 %}
-                        <a href="/manager/store_products/promo/{{ p[0] }}" style="color: #e67e22; text-decoration: none; font-weight: bold;">🏷️ Уцінити</a>
+                        <a href="/manager/store_products/promo/{{ p[0] }}" style="color: #e67e22; text-decoration: none; font-weight: bold;">Уцінити</a>
                         {% endif %}
                     </td>
                 </tr>

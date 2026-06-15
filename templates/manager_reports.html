@@ -1,89 +1,154 @@
 {% extends 'base.html' %}
 
-{% block title %}Фінансові звіти - ZLAGODA{% endblock %}
+{% block title %}Аналітичні звіти — ZLAGODA{% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
     <div class="header-actions">
-        <h2>Аналітичний звіт про продажі</h2>
-        <button class="btn-primary" style="width: auto; margin-top: 0; background-color: var(--primary-green);" onclick="window.print()">🖨️ Друкувати звіт</button>
+        <h2>Модуль аналітики та фінансових звітів</h2>
+        <button onclick="window.print()" class="btn-primary" style="width: auto; margin-top: 0; padding: 11px 24px; background: var(--primary-green); border-radius: 10px; cursor: pointer; font-weight: 600;">
+            Роздрукувати звіт (А4)
+        </button>
     </div>
 
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 30px;">
-        <form method="GET" style="display: flex; gap: 15px; align-items: flex-end;">
-            <div>
-                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Початкова дата</label>
-                <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="padding: 10px;">
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 16px; margin-bottom: 30px; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);">
+        <form method="GET" action="/manager/reports" style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="width: 200px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--primary-green); display: block; margin-bottom: 6px;">Початок періоду</label>
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="padding: 9px 14px; border-radius: 10px;">
             </div>
-            <div>
-                <label style="font-size: 13px; color: gray; margin-bottom: 5px; display: block;">Кінцева дата</label>
-                <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="padding: 10px;">
+            <div style="width: 200px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--primary-green); display: block; margin-bottom: 6px;">Кінець періоду</label>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="padding: 9px 14px; border-radius: 10px;">
             </div>
-            <button type="submit" class="btn-primary" style="width: auto; padding: 10px 20px; margin-top: 0;">Згенерувати</button>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--primary-green); display: block; margin-bottom: 6px;">Касир для розрахунку виручки</label>
+                <select name="target_cashier" class="form-control" style="padding: 10px 14px; border-radius: 10px;">
+                    <option value="">-- Оберіть касира для розрахунку виручки --</option>
+                    {% for c in cashiers_list %}
+                        <option value="{{ c[0] }}" {% if target_cashier == c[0] %}selected{% endif %}>{{ c[1] }} {{ c[2] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--primary-green); display: block; margin-bottom: 6px;">Товар (назва чи UPC)</label>
+                <input type="text" name="target_product" value="{{ target_product }}" class="form-control" placeholder="Введіть назву або UPC..." style="padding: 9px 14px; border-radius: 10px;">
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: auto; margin-top: 0; padding: 11px 30px; border-radius: 10px;">Згенерувати аналітику</button>
         </form>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-        <div style="background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-top: 4px solid var(--primary-pink);">
-            <small style="color: gray; text-transform: uppercase; font-size: 11px; font-weight: bold;">Оформлено чеків</small>
-            <h3 style="margin: 10px 0 0 0; font-size: 28px;">{{ finance[0] }} шт.</h3>
-        </div>
-        <div style="background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-top: 4px solid #27ae60;">
-            <small style="color: gray; text-transform: uppercase; font-size: 11px; font-weight: bold;">Загальна виручка</small>
-            <h3 style="margin: 10px 0 0 0; font-size: 28px; color: #27ae60;">{{ finance[1] }} грн</h3>
-        </div>
-        <div style="background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-top: 4px solid #e67e22;">
-            <small style="color: gray; text-transform: uppercase; font-size: 11px; font-weight: bold;">Всього нараховано ПДВ</small>
-            <h3 style="margin: 10px 0 0 0; font-size: 28px; color: #e67e22;">{{ finance[2] }} грн</h3>
+    <div style="background: #FFF9FA; border: 2px solid #F5E0E4; border-radius: 20px; padding: 25px; margin-bottom: 30px;">
+        <h3 style="margin-top: 0; color: var(--primary-pink); border-bottom: 1px solid #F5E0E4; padding-bottom: 10px;">Фінансові показники по всіх касирах за період</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center; margin-top: 15px;">
+            <div>
+                <span style="font-size: 13px; color: gray; display: block;">Закрито чеків</span>
+                <strong style="font-size: 24px; color: var(--text-main);">{{ finance[0] }} шт</strong>
+            </div>
+            <div>
+                <span style="font-size: 13px; color: gray; display: block;">Загальний виторг магазину</span>
+                <strong style="font-size: 24px; color: #27ae60;">{{ "%.2f"|format(finance[1]) }} грн</strong>
+            </div>
+            <div>
+                <span style="font-size: 13px; color: gray; display: block;">У тому числі ПДВ (20%)</span>
+                <strong style="font-size: 24px; color: #e67e22;">{{ "%.2f"|format(finance[2]) }} грн</strong>
+            </div>
         </div>
     </div>
 
-    <h3 style="margin-top: 30px;">Продажі за касирами</h3>
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>ID Касира</th>
-                <th>Прізвище, Ім'я</th>
-                <th>Кількість чеків</th>
-                <th>Сума продажів</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in cashiers %}
-            <tr>
-                <td>{{ c[0] }}</td>
-                <td>{{ c[1] }} {{ c[2] }}</td>
-                <td>{{ c[3] }}</td>
-                <td><strong>{{ c[4] }} грн</strong></td>
-            </tr>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        
+        <div style="background: #ffffff; border: 1px solid #eee; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <h3 style="margin-top: 0; color: var(--primary-green); border-bottom: 1px solid #eee; padding-bottom: 10px;">Виторг окремого касира</h3>
+            {% if target_cashier %}
+                <div style="margin-top: 20px; text-align: center;">
+                    <p style="font-size: 15px; margin-bottom: 5px;">Сумарна виручка, яку згенерував працівник <br><strong>{{ selected_cashier_name }}</strong>:</p>
+                    <strong style="font-size: 28px; color: #27ae60; display: block; margin-top: 10px;">{{ "%.2f"|format(cashier_revenue) }} грн</strong>
+                    <small style="color: gray; display: block; margin-top: 10px;">Період: з {{ start_date }} по {{ end_date }}</small>
+                </div>
             {% else %}
-            <tr><td colspan="4" style="text-align: center;">Немає даних за цей період.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                <p style="color: gray; font-style: italic; text-align: center; margin-top: 40px;">Оберіть касира у верхній панелі фільтрів для розрахунку його виручки.</p>
+            {% endif %}
+        </div>
 
-    <h3 style="margin-top: 40px;">Топ-5 найпопулярніших товарів</h3>
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>UPC товару</th>
-                <th>Назва товару</th>
-                <th>Продано (кількість)</th>
-                <th>Загальна сума</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in products %}
-            <tr>
-                <td>{{ p[0] }}</td>
-                <td>{{ p[1] }}</td>
-                <td>{{ p[2] }} шт/кг</td>
-                <td><strong style="color: #27ae60;">{{ p[3] }} грн</strong></td>
-            </tr>
+        <div style="background: #ffffff; border: 1px solid #eee; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <h3 style="margin-top: 0; color: var(--primary-green); border-bottom: 1px solid #eee; padding-bottom: 10px;">Обсяг реалізації обраного товару</h3>
+            {% if target_product %}
+                <div class="table-wrapper" style="margin-top: 15px;">
+                    <table class="styled-table" style="font-size: 13px;">
+                        <thead>
+                            <tr>
+                                <th>Назва товару / UPC</th>
+                                <th>К-сть одиниць</th>
+                                <th>На суму</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in product_sales_results %}
+                            <tr>
+                                <td><strong>{{ p[0] }}</strong><br><small class="text-muted">UPC: {{ p[1] }}</small></td>
+                                <td><strong style="color: var(--primary-pink); font-size: 15px;">{{ p[2] }} шт/кг</strong></td>
+                                <td><strong>{{ "%.2f"|format(p[3]) }} грн</strong></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" style="text-align: center; color: gray;">За цей період продажів цього товару не зафіксовано.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
-            <tr><td colspan="4" style="text-align: center;">Немає даних про продажі товарів.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                <p style="color: gray; font-style: italic; text-align: center; margin-top: 40px;">Введіть назву або штрих-код продукту для підрахунку обсягу його продажів.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <div>
+            <h4>Рейтинг касирів за виторгом</h4>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Прізвище Ім'я</th>
+                        <th>Чеки</th>
+                        <th>Сума продажів</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cashiers %}
+                    <tr>
+                        <td><strong>{{ c[1] }} {{ c[2] }}</strong> <small style="color: gray;">(ID: {{ c[0] }})</small></td>
+                        <td>{{ c[3] }} шт</td>
+                        <td><strong style="color: #27ae60;">{{ "%.2f"|format(c[4]) }} грн</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <h4>Топ-5 найпопулярніших товарів на полицях</h4>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Назва товару</th>
+                        <th>Продано</th>
+                        <th>Оборот</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in products %}
+                    <tr>
+                        <td><strong>{{ p[1] }}</strong><br><small style="color: gray;">UPC: {{ p[0] }}</small></td>
+                        <td>{{ p[2] }} шт/кг</td>
+                        <td><strong>{{ "%.2f"|format(p[3]) }} грн</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

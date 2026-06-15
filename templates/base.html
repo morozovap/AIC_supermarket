@@ -132,13 +132,14 @@
     <nav class="top-nav">
         <div class="nav-logo">ZLAGODA</div>
         <div class="nav-links">
-            {% if session.get('role')|string|lower == 'manager' or session.get('role')|string|lower == 'менеджер' %}
+             {% if session.get('role')|string|lower == 'manager' or session.get('role')|string|lower == 'менеджер' %}
                 <a href="/manager/employees" class="{% if request.endpoint == 'manager_employees' %}active{% endif %}">Працівники</a>
                 <a href="/manager/products" class="{% if request.endpoint == 'manager_products' %}active{% endif %}">Довідник товарів</a>
                 <a href="/manager/store_products" class="{% if request.endpoint == 'manager_store_products' %}active{% endif %}">На полицях</a>
                 <a href="/manager/checks" class="{% if request.endpoint == 'manager_checks' %}active{% endif %}">Чеки</a>
                 <a href="/manager/categories" class="{% if request.endpoint == 'manager_categories' %}active{% endif %}">Категорії</a>
                 <a href="/manager/customers" class="{% if request.endpoint == 'manager_customers' %}active{% endif %}">Клієнти</a>
+                <a href="/manager/reports" class="{% if request.endpoint == 'manager_reports' %}active{% endif %}" style="font-weight: 600; color: var(--primary-pink);">📊 Звіти</a>
             {% else %}
                 <a href="/cashier/profile" class="{% if request.endpoint == 'cashier_profile' %}active{% endif %}">👤 Мій профіль</a>
                 <a href="/cashier/sell" class="{% if request.endpoint == 'cashier_sell' %}active{% endif %}" style="font-weight: 600; color: var(--primary-pink);">🛒 Оформити продаж</a>
