@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+
 {% block content %}
 <div class="dashboard-container">
     <div class="header-actions">
@@ -6,12 +7,29 @@
         <button class="btn-primary" onclick="window.location.href='/manager/customers/add'">+ Нова картка</button>
     </div>
     <table class="styled-table">
-        <thead><tr><th>Номер</th><th>Прізвище</th><th>Ім'я</th><th>Телефон</th><th>% знижки</th><th>Дії</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Номер</th>
+                <th>Прізвище</th>
+                <th>Ім'я</th>
+                <th>Телефон</th>
+                <th>% знижки</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
         <tbody>
             {% for c in customers %}
             <tr>
-                <td>{{ c[0] }}</td><td>{{ c[1] }}</td><td>{{ c[2] }}</td><td>{{ c[4] }}</td><td>{{ c[8] }}%</td>
-                <td><a href="/manager/customers/delete/{{ c[0] }}" style="color: #e74c3c;" onclick="return confirm('Видалити?')">✕ Вид.</a></td>
+                <td>{{ c[0] }}</td>
+                <td>{{ c[1] }}</td>
+                <td>{{ c[2] }}</td>
+                <td>{{ c[4] }}</td>
+                <td>{{ c[8] }}%</td>
+                <td>
+                    <a href="/manager/customers/edit/{{ c[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 15px; font-weight: 500;">✎ Ред.</a>
+                    
+                    <a href="/manager/customers/delete/{{ c[0] }}" style="color: #e74c3c; text-decoration: none; font-weight: 500;" onclick="return confirm('Ви впевнені, що хочете видалити цю картку клієнта?')">✕ Вид.</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
+
 {% block title %}Категорії - ZLAGODA{% endblock %}
+
 {% block content %}
 <div class="dashboard-container">
     <h2>Керування категоріями</h2>
@@ -10,13 +12,23 @@
     </form>
 
     <table class="styled-table">
-        <thead><tr><th>ID</th><th>Назва</th><th>Дії</th></tr></thead>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Назва</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
         <tbody>
             {% for cat in categories %}
             <tr>
                 <td>{{ cat[0] }}</td>
                 <td>{{ cat[1] }}</td>
-                <td><a href="/manager/categories/delete/{{ cat[0] }}" style="color: #e74c3c;">✕ Видалити</a></td>
+                <td>
+                    <a href="/manager/categories/edit/{{ cat[0] }}" style="color: var(--primary-green); text-decoration: none; margin-right: 15px; font-weight: 500;">✎ Ред.</a>
+                    
+                    <a href="/manager/categories/delete/{{ cat[0] }}" style="color: #e74c3c; text-decoration: none; font-weight: 500;" onclick="return confirm('Ви впевнені, що хочете видалити цю категорію?')">✕ Вид.</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

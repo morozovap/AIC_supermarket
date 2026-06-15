@@ -70,7 +70,66 @@
         .styled-table th, .styled-table td { padding: 15px; border-bottom: 1px solid #eee; }
         .styled-table tbody tr:hover { background-color: #FFF9FA; }
         .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+        /* ── СТИЛІ ДЛЯ ПРОФЕСІЙНОГО ДРУКУ (ЧАСТИНА 1) ── */
+        @media print {
+            /* Приховуємо навігацію, кнопки дій, форми пошуку та елементи редагування/видалення */
+            .top-nav, 
+            .header-actions, 
+            .btn-primary, 
+            form, 
+            button, 
+            .logout-btn, 
+            a[href*="delete"], 
+            a[href*="edit"],
+            a[href*="promo"],
+            .remove-btn {
+                display: none !important;
+            }
+
+            /* Зміна кольорової палітри сайту на строго чорно-білу для принтера */
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-family: Arial, sans-serif;
+                padding: 0;
+                margin: 0;
+            }
+
+            /* Розтягуємо контейнер на всю ширину сторінки А4 */
+            .dashboard-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Форматування класичної друкованої таблиці документа */
+            .styled-table {
+                width: 100% !important;
+                border: 1px solid #000000 !important;
+                border-collapse: collapse !important;
+            }
+
+            .styled-table th {
+                background-color: #f0f0f0 !important;
+                color: #000000 !important;
+                border: 1px solid #000000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .styled-table td {
+                border: 1px solid #000000 !important;
+                color: #000000 !important;
+                padding: 10px !important;
+            }
+        }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
 <body>
     {% if request.endpoint != 'login' %}
@@ -78,11 +137,12 @@
         <div class="nav-logo">ZLAGODA</div>
         <div class="nav-links">
             <a href="/manager/employees" class="{% if request.endpoint == 'manager_employees' %}active{% endif %}">Працівники</a>
-            <a href="/manager/products" class="{% if request.endpoint == 'manager_products' %}active{% endif %}">Товари</a>
+            <a href="/manager/products" class="{% if request.endpoint == 'manager_products' %}active{% endif %}">Довідник товарів</a>
+            <a href="/manager/store_products" class="{% if request.endpoint == 'manager_store_products' %}active{% endif %}">На полицях</a>
             <a href="/manager/checks" class="{% if request.endpoint == 'manager_checks' %}active{% endif %}">Чеки</a>
             <a href="/manager/categories" class="{% if request.endpoint == 'manager_categories' %}active{% endif %}">Категорії</a>
             <a href="/manager/customers" class="{% if request.endpoint == 'manager_customers' %}active{% endif %}">Клієнти</a>
-            <a href="/login" class="logout-btn">Вихід</a>
+            <a href="/logout" class="logout-btn">Вихід</a>
         </div>
     </nav>
     {% endif %}

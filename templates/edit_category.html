@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Редагування категорії - ZLAGODA{% endblock %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 500px; margin-top: 40px;">
+    <h2>✎ Редагування категорії</h2>
+    <p style="font-size: 14px; color: gray; margin-bottom: 25px;">Номер категорії (ID): <b>{{ cat_num }}</b></p>
+
+    <form method="POST">
+        <div class="form-group">
+            <label>Назва категорії *</label>
+            <input type="text" name="category_name" class="form-control" required 
+                   value="{{ category[1] if category else '' }}" placeholder="Введіть нову назву">
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px;">Зберегти зміни</button>
+        <a href="/manager/categories" style="display: block; text-align: center; margin-top: 15px; color: #e74c3c; text-decoration: none; font-weight: 500;">Скасувати</a>
+    </form>
+</div>
+{% endblock %}

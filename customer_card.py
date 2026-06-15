@@ -30,6 +30,12 @@ def update_customer(card_number, surname, name, patronymic, phone, city, street,
     """
     params = (surname, name, patronymic, phone, city, street, zip_code, percent, card_number)
     execute_query(query, params)
+    
+def get_customer_by_card_number(card_number):
+    """Отримати повні дані клієнта за номером картки для форми редагування"""
+    query = "SELECT * FROM customer_card WHERE card_number = %s;"
+    result = execute_query(query, (card_number,), fetch=True)
+    return result[0] if result else None
 
 def delete_customer(card_number):
     query = "DELETE FROM customer_card WHERE card_number = %s;"

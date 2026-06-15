@@ -91,12 +91,21 @@ def logout():
 @app.route('/manager/employees')
 @manager_required
 def manager_employees():
+    # Ловимо параметри з GET-запиту
+    search_surname = request.args.get('search_surname', '')
+    role_filter = request.args.get('role_filter', 'all')
+
     try:
-        employees_list = employee.get_all_employees() or []
+        # Викликаємо нашу нову розумну функцію пошуку
+        employees_list = employee.search_employees(search_surname, role_filter) or []
     except Exception as e:
         employees_list = []
-        print(f"Помилка БД: {e}")
-    return render_template('manager_dashboard.html', employees=employees_list)
+        print(f"Помилка БД при пошуку працівників: {e}")
+        
+    return render_template('manager_dashboard.html', 
+                           employees=employees_list,
+                           search_surname=search_surname,
+                           role_filter=role_filter)
 
 @app.route('/manager/employees/add', methods=['GET', 'POST'])
 @manager_required
@@ -188,45 +197,70 @@ def edit_product(id_product):
 @app.route('/manager/store_products')
 @manager_required
 def manager_store_products():
-    products = store_product.get_all_store_products_by_name() or []
-    return render_template('store_products.html', products=products)
+    # Отримуємо параметри з URL (GET-запит)
+    search = request.args.get('search', '')
+    promo_filter = request.args.get('promo_filter', 'all')
+    sort_by = request.args.get('sort_by', 'name')
 
-# 2. Додавання нової партії (з автоматичною переоцінкою)
+    # Викликаємо нашу нову розумну функцію
+    products = store_product.search_store_products(search, promo_filter, sort_by) or []
+    
+    return render_template('manager_store_products.html', 
+                           products=products, 
+                           search=search, 
+                           promo_filter=promo_filter, 
+                           sort_by=sort_by)
+
+# 2. Додавання нової партії (Декілька товарів одночасно)
 @app.route('/manager/store_products/add', methods=['GET', 'POST'])
 @manager_required
 def add_store_product():
     error = None
     if request.method == 'POST':
-        data = request.form
+        # Отримуємо масиви даних з форми (як у чеках)
+        upcs = request.form.getlist('upc[]')
+        id_products = request.form.getlist('id_product[]')
+        quantities = request.form.getlist('products_number[]')
+        prices = request.form.getlist('selling_price[]')
+
         try:
-            # 1. Додаємо нову партію товару на полицю
-            store_product.add_store_product(
-                data['upc'],
-                data.get('upc_prom') or None,
-                data['id_product'],
-                data['selling_price'],
-                data['products_number'],
-                data.get('promotional_product') == 'on'
-            )
-            
-            # 2. ГЛОБАЛЬНА ПЕРЕОЦІНКА
-            # Оновлюємо ціну для всіх існуючих неакційних партій цього товару
-            from db import execute_query
-            update_price_query = """
-                UPDATE store_product 
-                SET selling_price = %s 
-                WHERE id_product = %s AND promotional_product = FALSE;
-            """
-            execute_query(update_price_query, (data['selling_price'], data['id_product']))
-            
-            # Якщо все успішно — повертаємося до списку товарів у магазині
+            # Проходимося циклом по кожному доданому рядку
+            for i in range(len(upcs)):
+                upc = upcs[i].strip()
+                if not upc: 
+                    continue # Пропускаємо порожні рядки
+
+                id_prod = id_products[i]
+                qty = int(quantities[i])
+                price = float(prices[i])
+
+                # Шукаємо, чи є вже такий штрих-код на полиці
+                existing_product = store_product.get_product_details_by_upc(upc)
+
+                if existing_product:
+                    # Товар є -> ОНОВЛЮЄМО КІЛЬКІСТЬ
+                    current_qty = existing_product[0][1] # індекс 1 - це products_number згідно твого get_product_details_by_upc
+                    new_qty = current_qty + qty
+                    store_product.update_store_product(upc, None, id_prod, price, new_qty, False)
+                else:
+                    # Товар новий -> СТВОРЮЄМО
+                    store_product.add_store_product(upc, None, id_prod, price, qty, False)
+
+                # ГЛОБАЛЬНА ПЕРЕОЦІНКА для всіх неакційних партій цього базового товару
+                from db import execute_query
+                update_price_query = """
+                    UPDATE store_product 
+                    SET selling_price = %s 
+                    WHERE id_product = %s AND promotional_product = FALSE;
+                """
+                execute_query(update_price_query, (price, id_prod))
+
             return redirect(url_for('manager_store_products'))
             
         except Exception as e:
             print(f"Помилка при додаванні партії: {e}")
-            error = f"Помилка бази даних: Можливо, товар з таким UPC вже існує, або не всі поля заповнені."
+            error = f"Помилка бази даних. Перевірте правильність введених даних."
 
-    # Якщо це GET-запит або сталася помилка — показуємо форму
     base_products = product.get_all_products() or []
     return render_template('add_store_product.html', products=base_products, error=error)
 
@@ -252,6 +286,63 @@ def edit_store_product(upc):
     prod_data = store_product.get_product_details_by_upc(upc)
     return render_template('edit_store_product.html', product=prod_data[0], upc=upc)
 
+# 5. Створення акційного товару (Логіка кнопки "Уцінити")
+@app.route('/manager/store_products/promo/<upc>', methods=['GET', 'POST'])
+@manager_required
+def promo_store_product(upc):
+    error = None
+    from db import execute_query
+    
+    query = """
+        SELECT sp.upc, sp.id_product, sp.selling_price, sp.products_number, p.product_name, sp.upc_prom
+        FROM store_product sp
+        JOIN product p ON sp.id_product = p.id_product
+        WHERE sp.upc = %s;
+    """
+    result = execute_query(query, (upc,), fetch=True)
+    if not result:
+        return "Товар не знайдено", 404
+        
+    prod = result[0]
+    # Формуємо акційну ціну як 80% від основної вартості
+    promo_price = round(float(prod[2]) * 0.8, 2)
+    
+    if request.method == 'POST':
+        promo_upc = request.form['promo_upc'].strip()
+        promo_qty = int(request.form['promo_qty'])
+        
+        if promo_qty > prod[3]:
+            error = f"Не можна уцінити більше, ніж є на полиці (макс. {prod[3]} шт/кг)."
+        elif promo_upc == upc:
+            error = "Акційний штрих-код не може збігатися зі звичайним штрих-кодом."
+        else:
+            try:
+                check_promo = execute_query("SELECT products_number FROM store_product WHERE upc = %s;", (promo_upc,), fetch=True)
+                
+                if check_promo:
+                    new_promo_qty = check_promo[0][0] + promo_qty
+                    execute_query("""
+                        UPDATE store_product 
+                        SET selling_price = %s, products_number = %s 
+                        WHERE upc = %s;
+                    """, (promo_price, new_promo_qty, promo_upc))
+                else:
+                    store_product.add_store_product(promo_upc, None, prod[1], promo_price, promo_qty, True)
+                
+                new_regular_qty = prod[3] - promo_qty
+                execute_query("""
+                    UPDATE store_product 
+                    SET products_number = %s, upc_prom = %s 
+                    WHERE upc = %s;
+                """, (new_regular_qty, promo_upc, upc))
+                
+                return redirect(url_for('manager_store_products'))
+            except Exception as e:
+                print(f"Помилка при створенні акції: {e}")
+                error = "Помилка бази даних. Перевірте унікальність акційного UPC."
+                
+    return render_template('promo_store_product.html', prod=prod, promo_price=promo_price, error=error)
+
 # ── КАТЕГОРІЇ ───────────────────────────────────────────────────
 @app.route('/manager/categories')
 @manager_required
@@ -270,6 +361,22 @@ def add_category():
 def delete_category(cat_num):
     category.delete_category(cat_num)
     return redirect(url_for('manager_categories'))
+
+@app.route('/manager/categories/edit/<int:cat_num>', methods=['GET', 'POST'])
+@manager_required
+def edit_category(cat_num):
+    if request.method == 'POST':
+        new_name = request.form['category_name']
+        try:
+            category.update_category(cat_num, new_name)
+            return redirect(url_for('manager_categories'))
+        except Exception as e:
+            print(f"Помилка при оновленні категорії: {e}")
+            return "Помилка при збереженні змін."
+
+    # Отримуємо поточну назву категорії, щоб менеджер бачив, що він редагує
+    cat_data = category.get_category_by_number(cat_num)
+    return render_template('edit_category.html', category=cat_data, cat_num=cat_num)
 
 # ── КЛІЄНТИ ─────────────────────────────────────────────────────
 @app.route('/manager/customers')
@@ -295,6 +402,25 @@ def add_customer():
 def delete_customer(card_number):
     customer_card.delete_customer(card_number)
     return redirect(url_for('manager_customers'))
+
+@app.route('/manager/customers/edit/<card_number>', methods=['GET', 'POST'])
+@login_required
+def edit_customer(card_number):
+    if request.method == 'POST':
+        data = request.form
+        try:
+            customer_card.update_customer(
+                card_number, data['surname'], data['name'], data['patronymic'],
+                data['phone'], data['city'], data['street'], data['zip_code'], data['percent']
+            )
+            return redirect(url_for('manager_customers'))
+        except Exception as e:
+            print(f"Помилка при оновленні картки клієнта: {e}")
+            return "Помилка при збереженні змін."
+
+    # Отримуємо дані для заповнення полів форми
+    cust = customer_card.get_customer_by_card_number(card_number)
+    return render_template('edit_customer.html', customer=cust, card_number=card_number)
 
 # ── ЧЕКИ ────────────────────────────────────────────────────────
 @app.route('/manager/checks')
@@ -384,6 +510,59 @@ def cashier_sell():
     return render_template('sell_product.html',
                            products=products, customers=customers,
                            error=None, auto_check_number=auto_number)
+    
+# ── АНАЛІТИЧНІ ЗВІТИ ДЛЯ МЕНЕДЖЕРА ──────────────────────────────
+@app.route('/manager/reports', methods=['GET', 'POST'])
+@manager_required
+def manager_reports():
+    from db import execute_query
+    
+    # Значення за замовчуванням (поточний місяць)
+    start_date = request.args.get('start_date', '2026-06-01')
+    end_date = request.args.get('end_date', '2026-06-30')
+    
+    # 1. Загальні фінансові показники за період
+    finance_query = """
+        SELECT COUNT(check_number) as total_checks,
+               COALESCE(SUM(sum_total), 0) as total_revenue,
+               COALESCE(SUM(vat), 0) as total_vat
+        FROM receipts
+        WHERE print_date >= %s AND print_date <= %s;
+    """
+    finance_res = execute_query(finance_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True)
+    finance = finance_res[0] if finance_res else (0, 0, 0)
+    
+    # 2. Рейтинг касирів за виторгом
+    cashier_query = """
+        SELECT r.id_employee, e.empl_surname, e.empl_name, COUNT(r.check_number), SUM(r.sum_total)
+        FROM receipts r
+        JOIN employee e ON r.id_employee = e.id_employee
+        WHERE r.print_date >= %s AND r.print_date <= %s
+        GROUP BY r.id_employee, e.empl_surname, e.empl_name
+        ORDER BY SUM(r.sum_total) DESC;
+    """
+    cashiers = execute_query(cashier_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True) or []
+    
+    # 3. Топ-5 найпопулярніших товарів на полицях
+    popular_query = """
+        SELECT sp.upc, p.product_name, SUM(s.product_number) as sold_qty, SUM(s.product_number * s.selling_price) as total_sales
+        FROM sale s
+        JOIN store_product sp ON s.upc = sp.upc
+        JOIN product p ON sp.id_product = p.id_product
+        JOIN receipts r ON s.check_number = r.check_number
+        WHERE r.print_date >= %s AND r.print_date <= %s
+        GROUP BY sp.upc, p.product_name
+        ORDER BY sold_qty DESC
+        LIMIT 5;
+    """
+    popular_products = execute_query(popular_query, (start_date + " 00:00:00", end_date + " 23:59:59"), fetch=True) or []
+
+    return render_template('manager_reports.html', 
+                           finance=finance, 
+                           cashiers=cashiers, 
+                           products=popular_products,
+                           start_date=start_date, 
+                           end_date=end_date)
 
 if __name__ == '__main__':
     app.run(debug=True)

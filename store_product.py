@@ -105,3 +105,36 @@ def delete_store_product(upc):
 if __name__ == '__main__':
     for sp in get_all_store_products_by_quantity():
         print(sp)
+        
+def search_store_products(search_text='', promo_filter='all', sort_by='name'):
+    """Універсальна функція для пошуку, фільтрації та сортування товарів у магазині."""
+    
+    query = """
+        SELECT sp.upc, sp.upc_prom, sp.id_product, sp.selling_price, sp.products_number,
+               sp.promotional_product, p.product_name 
+        FROM store_product sp 
+        JOIN product p ON sp.id_product = p.id_product 
+        WHERE 1=1
+    """
+    params = []
+
+    # 1. Пошук за назвою (нечутливий до регістру)
+    if search_text:
+        query += " AND p.product_name ILIKE %s"
+        params.append(f"%{search_text}%")
+
+    # 2. Фільтр: Акційний / Неакційний
+    if promo_filter == 'promo':
+        query += " AND sp.promotional_product = TRUE"
+    elif promo_filter == 'non_promo':
+        query += " AND sp.promotional_product = FALSE"
+
+    # 3. Сортування
+    if sort_by == 'qty_asc':
+        query += " ORDER BY sp.products_number ASC"
+    elif sort_by == 'qty_desc':
+        query += " ORDER BY sp.products_number DESC"
+    else:
+        query += " ORDER BY p.product_name ASC"
+
+    return execute_query(query, tuple(params) if params else None, fetch=True)
