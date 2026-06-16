@@ -6,9 +6,12 @@
 <div class="dashboard-container">
     <div class="header-actions">
         <h2>Модуль аналітики та фінансових звітів</h2>
-        <button onclick="window.print()" class="btn-primary" style="width: auto; margin-top: 0; padding: 11px 24px; background: var(--primary-green); border-radius: 10px; cursor: pointer; font-weight: 600;">
-            Роздрукувати звіт (А4)
-        </button>
+        <a href="{{ url_for('manager_report_preview', start_date=start_date, end_date=end_date, target_cashier=target_cashier, target_product=target_product) }}"
+           target="_blank"
+           class="btn-primary"
+           style="width: auto; margin-top: 0; padding: 11px 24px; background: var(--primary-green); border-radius: 10px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block;">
+            Звіт
+        </a>
     </div>
 
     <div style="background: #f8f9fa; padding: 20px; border-radius: 16px; margin-bottom: 30px; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);">

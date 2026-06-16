@@ -1,7 +1,7 @@
 import mimetypes
 mimetypes.add_type('text/css', '.css')
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import category
 import employee
 import product
@@ -10,6 +10,26 @@ import check
 import store_product
 import datetime
 import uuid
+import io
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+)
+
+_FONT_REGULAR = 'ReportFont'
+_FONT_BOLD = 'ReportFontBold'
+try:
+    pdfmetrics.registerFont(TTFont(_FONT_REGULAR, 'C:/Windows/Fonts/arial.ttf'))
+    pdfmetrics.registerFont(TTFont(_FONT_BOLD, 'C:/Windows/Fonts/arialbd.ttf'))
+except Exception:
+    _FONT_REGULAR = 'Helvetica'
+    _FONT_BOLD = 'Helvetica-Bold'
 
 from auth import verify_password
 
@@ -736,11 +756,9 @@ def cashier_products():
     return render_template('cashier_products.html', products=products, categories=categories,
                            search_text=search_text, category_filter=category_filter, promo_filter=promo_filter)
     
-@app.route('/manager/reports', methods=['GET', 'POST'])
-@manager_required
-def manager_reports():
+def _collect_report_data():
     from db import execute_query
-    
+
     today = datetime.date.today()
     default_start = today.replace(day=1).strftime('%Y-%m-%d')
     default_end = today.strftime('%Y-%m-%d')
@@ -837,30 +855,167 @@ def manager_reports():
         cashiers, popular_products = [], []
         print(f"Помилка завантаження рейтингів: {e}")
         
-    return render_template('manager_reports.html', 
-                            finance=finance, 
-                            cashiers=cashiers, 
-                            products=popular_products,
-                            cashiers_list=cashiers_list,
-                            start_date=start_date, 
-                            end_date=end_date,
-                            target_cashier=target_cashier,
-                            cashier_revenue=cashier_revenue,
-                            selected_cashier_name=selected_cashier_name,
-                            target_product=target_product,
-                            product_sales_results=product_sales_results)
-    return render_template('manager_reports.html', 
-                           finance=finance, 
-                           cashiers=cashiers, 
-                           products=popular_products,
-                           cashiers_list=cashiers_list,
-                           start_date=start_date, 
-                           end_date=end_date,
-                           target_cashier=target_cashier,
-                           cashier_revenue=cashier_revenue,
-                           selected_cashier_name=selected_cashier_name,
-                           target_product=target_product,
-                           product_sales_results=product_sales_results)
+    return {
+        'finance': finance,
+        'cashiers': cashiers,
+        'products': popular_products,
+        'cashiers_list': cashiers_list,
+        'start_date': start_date,
+        'end_date': end_date,
+        'target_cashier': target_cashier,
+        'cashier_revenue': cashier_revenue,
+        'selected_cashier_name': selected_cashier_name,
+        'target_product': target_product,
+        'product_sales_results': product_sales_results,
+    }
+
+
+@app.route('/manager/reports', methods=['GET', 'POST'])
+@manager_required
+def manager_reports():
+    return render_template('manager_reports.html', **_collect_report_data())
+
+
+@app.route('/manager/reports/preview')
+@manager_required
+def manager_report_preview():
+    data = _collect_report_data()
+    data['generated_at'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+    return render_template('report_preview.html', **data)
+
+
+@app.route('/manager/reports/pdf')
+@manager_required
+def manager_report_pdf():
+    data = _collect_report_data()
+    pdf_bytes = _build_report_pdf(data)
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=False,
+        download_name='zlagoda_report.pdf',
+    )
+
+
+def _build_report_pdf(data):
+    buf = io.BytesIO()
+
+    period = f"{data['start_date']} - {data['end_date']}"
+    generated_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+
+    def _on_page(canvas_obj, doc):
+        canvas_obj.saveState()
+        canvas_obj.setFont(_FONT_BOLD, 11)
+        canvas_obj.drawString(15 * mm, A4[1] - 12 * mm, "ZLAGODA — Аналітичний звіт")
+        canvas_obj.setFont(_FONT_REGULAR, 9)
+        canvas_obj.drawRightString(A4[0] - 15 * mm, A4[1] - 12 * mm, f"Період: {period}")
+        canvas_obj.setStrokeColor(colors.grey)
+        canvas_obj.line(15 * mm, A4[1] - 14 * mm, A4[0] - 15 * mm, A4[1] - 14 * mm)
+        canvas_obj.setFont(_FONT_REGULAR, 8)
+        canvas_obj.line(15 * mm, 14 * mm, A4[0] - 15 * mm, 14 * mm)
+        canvas_obj.drawString(15 * mm, 9 * mm, f"Згенеровано: {generated_at}")
+        canvas_obj.drawRightString(A4[0] - 15 * mm, 9 * mm, f"Стор. {doc.page}")
+        canvas_obj.restoreState()
+
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=22 * mm,
+        bottomMargin=20 * mm,
+        title='ZLAGODA — Звіт',
+    )
+
+    styles = getSampleStyleSheet()
+    body = ParagraphStyle('Body', parent=styles['Normal'], fontName=_FONT_REGULAR, fontSize=10, leading=13)
+    h2 = ParagraphStyle('H2', parent=styles['Heading2'], fontName=_FONT_BOLD, fontSize=13, leading=16, spaceBefore=8, spaceAfter=6)
+
+    page_width = A4[0] - 30 * mm
+    story = []
+
+    finance = data['finance'] or (0, 0, 0)
+    story.append(Paragraph("Фінансові показники по всіх касирах", h2))
+    summary = Table(
+        [
+            ['Закрито чеків', 'Загальний виторг (грн)', 'У т.ч. ПДВ 20% (грн)'],
+            [str(finance[0]), f"{float(finance[1] or 0):.2f}", f"{float(finance[2] or 0):.2f}"],
+        ],
+        colWidths=[page_width / 3.0] * 3,
+    )
+    summary.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), _FONT_REGULAR),
+        ('FONTNAME', (0, 0), (-1, 0), _FONT_BOLD),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(summary)
+    story.append(Spacer(1, 8 * mm))
+
+    if data['target_cashier']:
+        story.append(Paragraph(
+            f"Виручка касира {data['selected_cashier_name'] or data['target_cashier']}: "
+            f"{float(data['cashier_revenue'] or 0):.2f} грн",
+            body,
+        ))
+        story.append(Spacer(1, 4 * mm))
+
+    if data['target_product'] and data['product_sales_results']:
+        story.append(Paragraph(f"Продажі товару «{data['target_product']}»", h2))
+        rows = [['Назва товару', 'UPC', 'К-сть продано', 'Сума (грн)']]
+        for p in data['product_sales_results']:
+            rows.append([str(p[0]), str(p[1]), str(p[2]), f"{float(p[3] or 0):.2f}"])
+        col_widths = [page_width * x for x in (0.40, 0.25, 0.15, 0.20)]
+        t = Table(rows, colWidths=col_widths, repeatRows=1)
+        t.setStyle(_table_style())
+        story.append(t)
+        story.append(Spacer(1, 6 * mm))
+
+    story.append(Paragraph("Рейтинг касирів за виторгом", h2))
+    rank_rows = [['ID', "Прізвище Ім'я", 'Чеки', 'Загальний виторг (грн)']]
+    for c in (data['cashiers'] or []):
+        rank_rows.append([str(c[0]), f"{c[1]} {c[2]}", str(c[3]), f"{float(c[4] or 0):.2f}"])
+    if len(rank_rows) == 1:
+        rank_rows.append(['—', 'Немає даних за період', '—', '—'])
+    rank = Table(rank_rows, colWidths=[page_width * x for x in (0.12, 0.48, 0.15, 0.25)], repeatRows=1)
+    rank.setStyle(_table_style())
+    story.append(rank)
+    story.append(Spacer(1, 6 * mm))
+
+    story.append(Paragraph("Топ-5 товарів за кількістю продажів", h2))
+    top_rows = [['UPC', 'Товар', 'Продано одиниць', 'Оборот (грн)']]
+    for p in (data['products'] or []):
+        top_rows.append([str(p[0]), str(p[1]), str(p[2]), f"{float(p[3] or 0):.2f}"])
+    if len(top_rows) == 1:
+        top_rows.append(['—', 'Немає даних за період', '—', '—'])
+    top = Table(top_rows, colWidths=[page_width * x for x in (0.22, 0.43, 0.15, 0.20)], repeatRows=1)
+    top.setStyle(_table_style())
+    story.append(top)
+
+    doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
+    return buf.getvalue()
+
+
+def _table_style():
+    return TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), _FONT_REGULAR),
+        ('FONTNAME', (0, 0), (-1, 0), _FONT_BOLD),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+    ])
+
 
 if __name__ == '__main__':
     app.run(debug=True)
