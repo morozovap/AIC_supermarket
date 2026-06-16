@@ -1,40 +1,31 @@
-# ============================================================
-#  ZLAGODA  —  docker-compose.yml
-#  Starts two containers with one command (`docker compose up -d`):
-#    1. db      — the PostgreSQL database itself
-#    2. pgadmin — a web tool for browsing the database and running SQL
-# ============================================================
-
 services:
 
-  # ---- The database ----------------------------------------
   db:
-    image: postgres:16                 # the official PostgreSQL image (version 16)
+    image: postgres:16
     container_name: zlagoda_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: zlagoda             # database created on first start
-      POSTGRES_USER: zlagoda_admin     # the login your app/tools will use
-      POSTGRES_PASSWORD: bdPassword2026 # <-- CHANGE THIS to your own password
+      POSTGRES_DB: zlagoda
+      POSTGRES_USER: zlagoda_admin
+      POSTGRES_PASSWORD: bdPassword2026
     ports:
-      - "5432:5432"                    # host_port:container_port  (connect tools to localhost:5432)
+      - "5432:5432"
     volumes:
-      - zlagoda_data:/var/lib/postgresql/data   # keeps your data between restarts
-      - ./db:/docker-entrypoint-initdb.d         # *.sql here run automatically on FIRST init
+      - zlagoda_data:/var/lib/postgresql/data
+      # SQL files in ./db run automatically on first init
+      - ./db:/docker-entrypoint-initdb.d
 
-  # ---- Web UI for the database (optional but handy) --------
   pgadmin:
     image: dpage/pgadmin4
     container_name: zlagoda_pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: veronikagovorischeva@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: dbpassword2026     # <-- the pgAdmin login password
+      PGADMIN_DEFAULT_PASSWORD: dbpassword2026
     ports:
-      - "8080:80"                      # open http://localhost:8080 in your browser
+      - "8080:80"
     depends_on:
       - db
 
-# Named volume where the actual database files live.
 volumes:
   zlagoda_data:

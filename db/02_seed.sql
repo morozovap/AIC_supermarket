@@ -1,11 +1,4 @@
--- ============================================================
---  ZLAGODA  —  test data  [revised after review]
---  - products now include a producer
---  - employees now include login + bcrypt password_hash
---    (all three log in with the password:  zlagoda123 )
---  - receipt sum_total now reflects the customer-card discount;
---    vat is computed automatically (generated column).
--- ============================================================
+-- ZLAGODA seed data. All seeded employees log in with password: zlagoda123
 
 INSERT INTO category (category_number, category_name) VALUES
     (1, 'Dairy'),
@@ -37,8 +30,6 @@ INSERT INTO product (id_product, category_number, product_name, producer, charac
     (3, 2, 'White Bread',  'Kyivkhlib',    '500g loaf'),
     (4, 3, 'Orange Juice', 'Sandora',      '1L carton');
 
--- Regular items first, then the promotional item (its price is set to
--- 80% of the regular juice automatically by the trigger -> 36.00).
 INSERT INTO store_product
     (upc, upc_prom, id_product, selling_price, products_number, promotional_product) VALUES
     ('001000000001', NULL, 1, 32.50, 100, FALSE),
@@ -46,22 +37,17 @@ INSERT INTO store_product
     ('001000000003', NULL, 3, 22.00,  40, FALSE),
     ('001000000004', NULL, 4, 45.00,  30, FALSE);
 
+-- Promotional price is overwritten to 36.00 by trg_promo_price (80% of 45.00).
 INSERT INTO store_product
     (upc, upc_prom, id_product, selling_price, products_number, promotional_product) VALUES
-    ('001000000104', '001000000004', 4, 0, 10, TRUE);   -- price overwritten to 36.00 by trigger
+    ('001000000104', '001000000004', 4, 0, 10, TRUE);
 
--- Receipts. sum_total = net amount the customer paid (line totals minus
--- the card discount); vat is generated, so it is NOT listed here.
---   R0001: milk 32.50 + yogurt 18.00 = 50.50, card C001 (5%)  -> 47.9750
---   R0002: bread 2 x 22.00          = 44.00, no card          -> 44.0000
---   R0003: juice 45.00 + promo 36.00 = 81.00, card C002 (10%) -> 72.9000
+-- sum_total already has the loyalty-card discount applied; vat is generated.
 INSERT INTO receipt (check_number, id_employee, card_number, print_date, sum_total) VALUES
     ('R0001', 'E002', 'C001', '2026-06-01 10:15:00', 47.9750),
     ('R0002', 'E002', NULL,   '2026-06-02 14:30:00', 44.0000),
     ('R0003', 'E003', 'C002', '2026-06-05 09:00:00', 72.9000);
 
--- Sale lines store the GROSS per-unit price at sale time (the discount
--- applies to the receipt total, not to individual lines).
 INSERT INTO sale (upc, check_number, product_number, selling_price) VALUES
     ('001000000001', 'R0001', 1, 32.50),
     ('001000000002', 'R0001', 1, 18.00),

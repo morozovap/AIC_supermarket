@@ -33,24 +33,23 @@ def transaction():
 def execute_query(query, params=None, fetch=False):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    
+
     try:
         cursor.execute(query, params)
         if fetch:
             result = cursor.fetchall()
+            # Return rows as tuples for compatibility with positional indexing
             if result and hasattr(result[0], 'values'):
                 return [tuple(row.values()) for row in result]
-            
             return result
         conn.commit()
     finally:
         cursor.close()
         conn.close()
+
 if __name__ == '__main__':
-    print("Перевірка підключення та RealDictCursor...")
     try:
         result = execute_query("SELECT * FROM employee LIMIT 1;", fetch=True)
-        print("Успіх! Ось як тепер виглядають дані:")
-        print(result)
+        print("Connection OK:", result)
     except Exception as e:
-        print(f"Помилка підключення: {e}")
+        print(f"Connection failed: {e}")
