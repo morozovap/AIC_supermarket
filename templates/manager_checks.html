@@ -71,7 +71,7 @@
                     <td style="text-align: center; display: flex; gap: 12px; justify-content: center;">
                         <a href="/manager/check/{{ c[0] }}" style="text-decoration: none; color: #3498db; font-weight: 600; font-size: 14px;">🔍 Вміст</a>
                         {% if session.get('role')|string|lower == 'manager' or session.get('role')|string|lower == 'менеджер' %}
-                            <a href="/manager/checks/delete/<check_number>" onclick="return confirm('Ви впевнені, що хочете видалити цей чек з історії?');" style="text-decoration: none; color: #e74c3c; font-weight: 600; font-size: 14px;">🗑 Видалити</a>
+                            <a href="/manager/checks/delete/{{ c[0] }}" onclick="return confirm('Ви впевнені, що хочете видалити цей чек з історії?');" style="text-decoration: none; color: #e74c3c; font-weight: 600; font-size: 14px;">🗑 Видалити</a>
                         {% endif %}
                     </td>
                 </tr>
